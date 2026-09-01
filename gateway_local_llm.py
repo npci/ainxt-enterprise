@@ -261,7 +261,16 @@ class _ModelCatalog:
             )
             r.raise_for_status()
             data = r.json()
-            raw_ids   = [item["id"] for item in data.get("data", [])]
+            # An OpenAI-compatible server with nothing loaded may answer 200 with
+            # {"object":"list","data":null} (Ollama does exactly this when no model
+            # has been pulled). The key EXISTS with a null value, so .get("data", [])
+            # returns None, not the default — iterating it raised TypeError, which the
+            # blanket `except` below reported as "model discovery failed" and left the
+            # purpose-built "returned empty list" warning underneath unreachable.
+            # `or []` covers null/missing/empty alike; item.get("id") tolerates a
+            # malformed entry instead of KeyError-ing the whole catalog away.
+            _entries  = data.get("data") if isinstance(data, dict) else None
+            raw_ids   = [i.get("id") for i in (_entries or []) if isinstance(i, dict) and i.get("id")]
             model_ids = [m for m in raw_ids if _is_ui_model(m)]
             if raw_ids and not model_ids:
                 logger.warning(

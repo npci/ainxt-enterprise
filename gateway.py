@@ -340,6 +340,22 @@ def _resolve_model_id(model: str) -> str:
         # local display name. If neither is set, return "unknown" so audit rows
         # are queryable rather than carrying an empty string.
         return CLAUDE_PRIMARY_MODEL or LOCAL_LLM_MODEL_NAME or "unknown"
+    _stripped = model.strip()
+    # A BARE display constant carries no embedded model ID — the parentheses are
+    # part of the NAME. model_router._tier_label() returns LOCAL_LLM_DISPLAY
+    # unadorned whenever the local catalog is empty (no model discovered), and
+    # the wrapper regex below then read "Local (In-house)" as the ID "In-house",
+    # inventing a model that exists nowhere and writing it to the chat footer and
+    # to model_usages.model. Recognise those names first and pass them through.
+    # Labels that DO carry an ID ("Local (In-house) (llama-guard3:1b)") are not
+    # matched here and still resolve via the regex, since it anchors on the LAST
+    # parenthesised group.
+    try:
+        from core.model_registry import LOCAL_LLM_DISPLAY as _LOCAL_DISPLAY
+        if _stripped == (_LOCAL_DISPLAY or "").strip():
+            return _stripped
+    except Exception:
+        pass
     # Strip display-label wrapper: "Display Name (model-id)" → "model-id"
     import re as _re
     m = _re.search(r'\(([^)]+)\)\s*(?:\[[^\]]*\])?\s*$', model)
@@ -7468,6 +7484,11 @@ async def ask_ai(q: Question, request: Request, authorization: Optional[str] = _
                 # in_tok=3 for every turn after a transient failure.
                 _stream_meta: dict = {}
                 _stream_thinking = ""
+                # True only once the ainxt-api hop has actually STREAMED this
+                # turn's answer. `_ainxt_model` is bound before the ainxt-api
+                # try block, so its mere existence says nothing about who
+                # served the response — see the _gmeta["model"] resolution below.
+                _ainxt_served = False
                 # /ask has already run compliance_engine.validate_input() on
                 # `original` at line 1799 (_ask_chk). The OpenAI/Gemini gateways
                 # used to re-validate the LAST message of _fp_messages — which
@@ -7904,6 +7925,10 @@ async def ask_ai(q: Question, request: Request, authorization: Optional[str] = _
                     # Populate _gmeta with the model used so chat_messages.model_used
                     # is saved correctly (otherwise it stays "auto" from the initializer).
                     _gmeta["model"] = _ainxt_model
+                    # Reached only when ainxt-api streamed the answer itself. The
+                    # post-stream metadata block below keys off this rather than
+                    # off `_ainxt_model` being bound.
+                    _ainxt_served = True
 
                     # Success marker. Without this the happy path is silent and
                     # indistinguishable from a turn that quietly produced nothing,
@@ -8063,7 +8088,17 @@ async def ask_ai(q: Question, request: Request, authorization: Optional[str] = _
                 # is absent (in_tok=0), estimate from prompt char count rather
                 # than reading a potentially stale thread-local.
                 # Prefer: ainxt-api model > stream_meta sentinel > router thread-local > "auto"
-                _ainxt_model_used = locals().get("_ainxt_model", "")
+                #
+                # The preference is valid ONLY when ainxt-api actually served this
+                # turn. `_ainxt_model` is assigned before the ainxt-api try block
+                # (the user's picked model, verbatim), so it stays bound even when
+                # that hop raises — disabled, unreachable, or no AINXT_API_URL — and
+                # the `except` falls back to _mr.async_stream(). Keying off
+                # locals() therefore pinned the footer to the PICKED model and
+                # discarded the real one from _stream_meta, so a turn that fell
+                # back to Claude still reported whatever the user had selected.
+                # _ainxt_served is set only on the ainxt-api streaming success path.
+                _ainxt_model_used = locals().get("_ainxt_model", "") if _ainxt_served else ""
                 _gmeta["model"]   = (
                     _ainxt_model_used
                     or _resolve_model_id(_stream_meta.get("model_id") or _stream_meta.get("model_label") or getattr(_mr, "last_model_id", None) or getattr(_mr, "last_model_label", ""))

@@ -2992,6 +2992,13 @@ class ModelRouter:
             import contextvars as _cv
             _ctx_snapshot = _cv.copy_context()
 
+            # Marker used to ship the post-dispatch label back across the
+            # thread boundary — see _LabelHandoff below.
+            class _LabelHandoff:
+                __slots__ = ("label", "tier")
+                def __init__(self, label, tier):
+                    self.label, self.tier = label, tier
+
             def _run_sync():
                 def _inner():
                     try:
@@ -3006,6 +3013,37 @@ class ModelRouter:
                     except Exception as _e:
                         _loop.call_soon_threadsafe(_queue.put_nowait, _e)
                     finally:
+                        # last_model_label is a threading.local() property
+                        # (see ModelRouter._tl). _dispatch_stream runs HERE, on
+                        # this worker thread, so any label the _try_*_stream
+                        # helpers write — notably the Claude "[fallback]" label
+                        # when the selected provider's gateway is unavailable —
+                        # lands in THIS thread's storage and is invisible to the
+                        # event-loop thread that emits the __stream_meta__
+                        # sentinel below. That thread still holds the label set
+                        # from `decision.model` before dispatch, so a turn that
+                        # fell back to Claude was reported (and priced) as the
+                        # originally selected model. contextvars are copied into
+                        # this thread by _ctx_snapshot, but thread-locals are
+                        # not, and neither propagates back out — so hand the
+                        # value across the queue explicitly.
+                        try:
+                            # Read the RAW thread-locals, not the properties:
+                            # last_model_label/last_tier default to "auto" when
+                            # unset, which is indistinguishable from a value the
+                            # dispatch actually chose. A helper that never
+                            # touched them (no fallback taken) must hand back
+                            # None so the event-loop thread keeps the label and
+                            # tier it already holds from the routing decision.
+                            _loop.call_soon_threadsafe(
+                                _queue.put_nowait,
+                                _LabelHandoff(
+                                    getattr(self._tl, "last_model_label", None),
+                                    getattr(self._tl, "last_tier", None),
+                                ),
+                            )
+                        except Exception:
+                            pass
                         _loop.call_soon_threadsafe(_queue.put_nowait, _SENTINEL)
                 _ctx_snapshot.run(_inner)
 
@@ -3018,6 +3056,15 @@ class ModelRouter:
                     break
                 if isinstance(item, Exception):
                     raise item
+                if isinstance(item, _LabelHandoff):
+                    # Adopt the label the dispatch thread actually served under,
+                    # onto THIS thread, so the sentinel below reports the real
+                    # model rather than the pre-dispatch routing decision.
+                    if item.label:
+                        self.last_model_label = item.label
+                    if item.tier:
+                        self.last_tier = item.tier
+                    continue
                 yield item
             self._propagate_tokens(decision.tier)
 
