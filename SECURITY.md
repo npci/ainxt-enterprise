@@ -33,5 +33,3 @@ A good vulnerability report includes:
 - **Affected component** — which service, file, or endpoint is affected.
 - **Suggested fix** — optional, but appreciated.
 - **Your contact details** — so we can keep you updated and credit you.
-
----
