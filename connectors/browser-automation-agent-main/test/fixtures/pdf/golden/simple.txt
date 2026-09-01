@@ -1,0 +1,7 @@
+numPages=2
+--- page 1 ---
+Hello,   World!
+Second line.
+
+--- page 2 ---
+¤

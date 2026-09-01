@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AiNxt — Governance {% if decision == "approved" %}Approved{% else %}Changes Requested{% endif %}: {{ run.jira_key or run.id }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f7fa;padding:24px 0;">
+  <tr><td align="center">
+
+    <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0"
+           style="max-width:640px;width:100%;background:#ffffff;border-radius:8px;
+                  box-shadow:0 1px 3px rgba(0,0,0,0.08);overflow:hidden;">
+
+      <!-- ===== Header (colour keyed to decision) ===== -->
+      <tr>
+        {% if decision == "approved" %}
+        <td bgcolor="#166534" style="background-color:#166534;background:#166534;
+                   background:linear-gradient(135deg,#166534 0%,#22c55e 100%);
+                   padding:28px 32px;color:#ffffff;">
+        {% else %}
+        <td bgcolor="#9a3412" style="background-color:#9a3412;background:#9a3412;
+                   background:linear-gradient(135deg,#9a3412 0%,#f97316 100%);
+                   padding:28px 32px;color:#ffffff;">
+        {% endif %}
+          <div style="font-size:22px;font-weight:700;letter-spacing:.3px;">AiNxt</div>
+          <div style="font-size:14px;opacity:.85;margin-top:2px;">{{ platform_name }} · SDLC Governance</div>
+          <div style="margin-top:18px;font-size:20px;font-weight:600;">
+            {% if decision == "approved" %}Governance Approved{% else %}Changes Requested{% endif %}
+          </div>
+          <div style="margin-top:4px;font-size:14px;opacity:.9;">
+            {{ run.jira_key or run.id }}{% if run.jira_summary %} · {{ run.jira_summary }}{% endif %}
+          </div>
+        </td>
+      </tr>
+
+      <!-- ===== Greeting ===== -->
+      <tr><td style="padding:22px 32px 8px 32px;font-size:14px;color:#1f2937;">
+        <p style="margin:0 0 12px 0;">Hi {{ author.name or author.email }},</p>
+        {% if decision == "approved" %}
+        <p style="margin:0 0 16px 0;">
+          Good news — all governance domains for your SDLC run have been
+          <strong>approved</strong>. The run can now proceed to the next stage.
+        </p>
+        {% else %}
+        <p style="margin:0 0 16px 0;">
+          The <strong>{{ domain }}</strong> governance team has
+          <strong>requested changes</strong> on your SDLC run and sent it back to you.
+          Please address the feedback below and re-submit for review.
+        </p>
+        {% endif %}
+      </td></tr>
+
+      <!-- ===== Reviewer feedback (send-back only) ===== -->
+      {% if decision != "approved" and comment %}
+      <tr><td style="padding:0 32px 8px 32px;font-size:14px;color:#1f2937;">
+        <div style="background:#fff7ed;border-left:4px solid #f97316;padding:12px 16px;border-radius:4px;">
+          <div style="font-size:11px;color:#9a3412;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px;">
+            Reviewer Feedback{% if decided_by %} · {{ decided_by }}{% endif %}
+          </div>
+          <div style="white-space:pre-wrap;">{{ comment }}</div>
+        </div>
+      </td></tr>
+      {% endif %}
+
+      <!-- ===== Run details ===== -->
+      <tr><td style="padding:8px 32px 8px 32px;">
+        <h2 style="margin:0 0 12px 0;font-size:16px;color:#1e3a8a;
+                   border-bottom:2px solid #e5e7eb;padding-bottom:6px;">
+          Run Details
+        </h2>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px;">
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;width:38%;">Run ID</td>
+            <td style="padding:4px 0;font-weight:600;">{{ run.id }}</td>
+          </tr>
+          {% if run.jira_key %}
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;">Jira</td>
+            <td style="padding:4px 0;">{{ run.jira_key }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;">Repository</td>
+            <td style="padding:4px 0;">{{ run.repo or "—" }}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;">Branch</td>
+            <td style="padding:4px 0;">{{ run.branch or "—" }}</td>
+          </tr>
+          {% if decision != "approved" %}
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;">Domain</td>
+            <td style="padding:4px 0;">{{ domain }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;">Decision (IST)</td>
+            <td style="padding:4px 0;">{{ decided_at_ist }}</td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <!-- ===== Call to action ===== -->
+      {% if run_url %}
+      <tr><td style="padding:16px 32px 8px 32px;">
+        <a href="{{ run_url }}"
+           style="display:inline-block;{% if decision == 'approved' %}background:#166534{% else %}background:#9a3412{% endif %};color:#ffffff;text-decoration:none;
+                  padding:10px 20px;border-radius:6px;font-size:14px;font-weight:600;">
+          {% if decision == "approved" %}View Run{% else %}Address Feedback{% endif %}
+        </a>
+      </td></tr>
+      {% endif %}
+
+      <!-- ===== Footer ===== -->
+      <tr><td style="padding:18px 32px 24px 32px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
+        Generated by AiNxt · {{ platform_name }} SDLC Governance<br />
+        This is an automated message — do not reply to this email.
+      </td></tr>
+
+    </table>
+
+  </td></tr>
+</table>
+
+</body>
+</html>

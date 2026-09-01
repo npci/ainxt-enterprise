@@ -1,0 +1,41 @@
+# Configuration for scripts/ci/release_checks.py
+#
+# Everything here has a working default — this file only exists so you can adapt
+# the checks to your organisation without editing the script.
+#
+# Precedence: command-line flags > environment variables > this file > defaults.
+# Every key below is also settable as RELEASE_CHECKS_<KEY_UPPERCASED>.
+
+[checks]
+
+# Marker for YOUR organisation's internal infrastructure. Used by the
+# lockfile-registry and internal-urls checks. A regex alternation is fine:
+#   internal_pattern = "npci|acme-corp|internal\\.example\\.com"
+internal_pattern = "npci"
+
+# Paths whose internal-reference hits are tolerated. Documentation legitimately
+# describes internal history; generated bundles and CI scripts quote patterns.
+internal_allowlist = [
+  "documentation.html",
+  "docs/",
+  "compliance/",
+  "scripts/ci/",
+  ".github/",
+]
+
+# Documents whose relative links must all resolve. These are the ones a
+# newcomer actually follows, so a dead link here is a setup blocker.
+linked_docs = [
+  "README.md",
+  "docs/GETTING_STARTED.md",
+  "compliance/README.md",
+  "SUPPORT.md",
+]
+
+# Environment templates that must stay clean (no duplicate keys, no populated
+# credentials). Both files are gated: .env.example is the OSS user template;
+# .env.internal.example is the internal deployment profile.
+env_files = [".env.example", ".env.internal.example"]
+
+# Shell scripts that must parse.
+shell_scripts = ["install.sh", "stop-local.sh", "compliance/generate-sbom.sh"]

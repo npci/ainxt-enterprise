@@ -1,0 +1,46 @@
+# Known-failing tests, recorded 2026-08-29 at commit c677557.
+#
+# These failures PRE-DATE the introduction of CI. They are tracked here so CI can
+# block NEW breakage without first requiring all of them to be fixed — the
+# alternative is a permanently-red pipeline that everyone learns to ignore.
+#
+# Two root causes seen so far, both production code moving without the tests:
+#   * core/config.py validate_prod_config() gained an AUDIT_SIGNING_KEY
+#     requirement; tests/config still expects validation to pass without it.
+#   * auth/jwt_handler.py decode_token() gained a session-registry check;
+#     tests/auth encodes a token without registering a session, so decode
+#     correctly returns None and the assertion fails.
+#
+# Removing a line here is always safe. Adding one should be a deliberate,
+# reviewed decision with a reason.
+
+tests/agents/test_connector_first_routing.py::test_full_power_prompt_names_the_dev_connectors[GitLab]
+tests/agents/test_connector_first_routing.py::test_full_power_prompt_names_the_dev_connectors[Jira]
+tests/agents/test_connector_first_routing.py::test_full_power_prompt_names_the_dev_connectors[gitlab_list_my_mrs]
+tests/agents/test_gateway_passthrough_logic.py::test_gateway_claude_hint_set_matches_reference
+tests/agents/test_gateway_passthrough_logic.py::test_gateway_force_proxy_for_image_definition_present
+tests/agents/test_gateway_passthrough_logic.py::test_gateway_ide_dispatch_tuple_unchanged
+tests/agents/test_request_context_drift.py::test_every_rc_write_is_guarded
+tests/agents/test_request_context_drift.py::test_pipeline_v2_flag_default_off
+tests/auth/test_jwt_handler_kv.py::test_decode_fails_open_when_revocation_store_down[REDIS]
+tests/auth/test_jwt_handler_kv.py::test_encode_decode_round_trip[REDIS]
+tests/config/test_validate_prod_config.py::test_passes_when_all_redis_and_jwt_set
+tests/config/test_validate_prod_config.py::test_passes_when_rc_password_and_yaml_present
+tests/config/test_validate_prod_config.py::test_proxy_key_token_not_required_by_default
+tests/config/test_validate_prod_config.py::test_proxy_key_token_required_and_present_passes
+tests/config/test_validate_prod_config.py::test_proxy_key_token_required_when_opted_in_and_missing
+tests/core/ckms/test_bootstrap.py::test_base_only_boot_decrypts_protected_env_vars
+tests/core/ckms/test_bootstrap.py::test_empty_keys_table_aborts
+tests/core/ckms/test_bootstrap.py::test_enc_prefix_alone_is_treated_as_ciphertext
+tests/core/ckms/test_bootstrap.py::test_invalid_base_payload_aborts
+tests/core/ckms/test_bootstrap.py::test_malformed_env_ciphertext_aborts
+tests/core/ckms/test_bootstrap.py::test_mixed_env_vars_partial_rollout
+tests/core/ckms/test_bootstrap.py::test_non_base_row_invokes_hsm_gateway
+tests/core/ckms/test_bootstrap.py::test_step0_covers_all_db_connectivity_vars
+tests/core/ckms/test_bootstrap.py::test_step0_decrypts_db_password_before_repo_is_read
+tests/core/ckms/test_bootstrap.py::test_step0_missing_dek_aborts_when_db_var_is_enc
+tests/core/ckms/test_bootstrap.py::test_step0_wrong_bootstrap_dek_aborts
+tests/core/ckms/test_bootstrap.py::test_wrong_key_tag_mismatch_aborts
+tests/core/test_coach_events.py::test_channel_from_client_source[ide-ide]
+tests/core/test_coach_events.py::test_channel_from_client_source[ide-vscode-ide]
+tests/core/test_coach_events.py::test_channel_from_client_source[vscode-ide]

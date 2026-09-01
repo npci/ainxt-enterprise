@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AiNxt — 10x Winner Budget Approval Request</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f7fa;padding:24px 0;">
+  <tr><td align="center">
+
+    <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0"
+           style="max-width:640px;width:100%;background:#ffffff;border-radius:8px;
+                  box-shadow:0 1px 3px rgba(0,0,0,0.08);overflow:hidden;">
+
+      <!-- ===== Header ===== -->
+      <tr>
+        <td bgcolor="#1e3a8a" style="background-color:#1e3a8a;
+                   background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 100%);
+                   padding:28px 32px;color:#ffffff;">
+          <div style="font-size:22px;font-weight:700;letter-spacing:.3px;">AiNxt</div>
+          <div style="font-size:14px;opacity:.85;margin-top:2px;">{{ platform_name }} · AI Platform</div>
+          <div style="margin-top:18px;font-size:20px;font-weight:600;">
+            🏆 10x Winner Budget Approval Request{% if winners|length > 1 %}s{% endif %}
+          </div>
+          <div style="margin-top:4px;font-size:13px;opacity:.9;">
+            {{ winners|length }} winner{% if winners|length > 1 %}s{% endif %} from
+            <strong>{{ department }}</strong> — action required in your AiNxt Inbox
+          </div>
+        </td>
+      </tr>
+
+      <!-- ===== Greeting ===== -->
+      <tr><td style="padding:24px 32px 8px 32px;font-size:14px;color:#1f2937;">
+        <p style="margin:0 0 12px 0;">Hi,</p>
+        <p style="margin:0 0 16px 0;">
+          {% if winners|length == 1 %}
+            <strong>{{ winners[0].name }}</strong> has won as a
+            <strong>10x AI Professional Award</strong> winner from the
+            <strong>{{ department }}</strong> department. As their HOD, your approval
+            is required before the award budget is granted.
+          {% else %}
+            <strong>{{ winners|length }}</strong> members of the
+            <strong>{{ department }}</strong> department have won as
+            <strong>10x AI Professional Award</strong> winners.
+            As their HOD, your approval is required for each winner before the award budget is granted.
+          {% endif %}
+        </p>
+      </td></tr>
+
+      <!-- ===== Winners table ===== -->
+      <tr><td style="padding:0 32px 8px 32px;">
+        <div style="font-size:11px;color:#4338ca;text-transform:uppercase;
+                    letter-spacing:.5px;font-weight:700;margin-bottom:8px;">
+          Winner{% if winners|length > 1 %}s{% endif %} ({{ winners|length }})
+        </div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="font-size:13px;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+          <!-- Header row -->
+          <tr style="background:#1e3a8a;color:#ffffff;">
+            <td style="padding:8px 12px;font-weight:600;">#</td>
+            <td style="padding:8px 12px;font-weight:600;">Name</td>
+            <td style="padding:8px 12px;font-weight:600;">Email</td>
+            <td style="padding:8px 12px;font-weight:600;text-align:right;">Current Budget</td>
+            <td style="padding:8px 12px;font-weight:600;text-align:right;">Award</td>
+            <td style="padding:8px 12px;font-weight:600;text-align:right;">Total if Approved</td>
+          </tr>
+          <!-- One row per winner -->
+          {% for w in winners %}
+          <tr style="background:{{ '#f9fafb' if loop.index is odd else '#ffffff' }};border-top:1px solid #e5e7eb;">
+            <td style="padding:8px 12px;color:#6b7280;">{{ loop.index }}</td>
+            <td style="padding:8px 12px;font-weight:600;">{{ w.name }}</td>
+            <td style="padding:8px 12px;color:#4b5563;">{{ w.email }}</td>
+            <td style="padding:8px 12px;text-align:right;color:#4b5563;">{{ w.current_base_fmt }} + {{ w.current_extra_fmt }}</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:700;color:#1e3a8a;">{{ w.grant_fmt }}</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:700;color:#1e40af;">{{ w.total_if_approved_fmt }}</td>
+          </tr>
+          {% endfor %}
+          <!-- Totals row -->
+          <tr style="background:#eff6ff;border-top:2px solid #bfdbfe;">
+            <td colspan="4" style="padding:8px 12px;font-weight:600;color:#1e40af;">
+              Total award for {{ winners|length }} winner{% if winners|length > 1 %}s{% endif %}
+            </td>
+            <td style="padding:8px 12px;text-align:right;font-weight:700;color:#1e40af;">{{ total_grant_fmt }}</td>
+            <td style="padding:8px 12px;"></td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <!-- ===== How it works ===== -->
+      <tr><td style="padding:16px 32px 8px 32px;font-size:13px;color:#4b5563;">
+        <div style="font-size:11px;color:#4338ca;text-transform:uppercase;
+                    letter-spacing:.5px;font-weight:700;margin-bottom:8px;">
+          How the Award Works
+        </div>
+        <ul style="margin:0;padding-left:18px;line-height:1.7;">
+          <li>The award amount is <strong>added on top</strong> of each winner's existing budget — their base is not replaced.</li>
+          <li>The extra balance <strong>carries over month to month</strong> until fully spent — nothing needs to be re-applied.</li>
+          <li>Each winner has a <strong>separate inbox item</strong> — you can approve or reject them individually.</li>
+          <li>A winner can only be granted once per period.</li>
+        </ul>
+      </td></tr>
+
+      <!-- ===== Action required banner ===== -->
+      <tr><td style="padding:16px 32px 8px 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;">
+          <tr><td style="padding:14px 16px;">
+            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;">
+              ⚠ Approval must be done from AiNxt Inbox — not via email reply
+            </div>
+            <div style="font-size:13px;color:#78350f;line-height:1.6;">
+              To <strong>approve or reject</strong> each winner:
+              <ol style="margin:8px 0 0 0;padding-left:18px;">
+                <li>Log in to <strong>AiNxt</strong> and open your <strong>Inbox</strong>.</li>
+                <li>Find the request{% if winners|length > 1 %}s{% endif %} titled
+                  <em>"10x Winner budget approval request for &lt;winner name&gt;"</em>.</li>
+                <li>Click <strong>Approve</strong> or <strong>Reject</strong> for each winner individually.</li>
+              </ol>
+            </div>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <!-- ===== Footer ===== -->
+      <tr><td style="padding:20px 32px 24px 32px;border-top:1px solid #e5e7eb;
+                     font-size:12px;color:#6b7280;margin-top:8px;">
+        You are receiving this because you are the mapped HOD for the
+        <strong>{{ department }}</strong> department.<br />
+        Generated by AiNxt · {{ platform_name }} AI Platform — do not reply to this email.
+      </td></tr>
+
+    </table>
+
+  </td></tr>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,833 @@
+{
+  "id": null,
+  "uid": "ainxt-sdlc-pipeline",
+  "title": "SDLC Pipeline",
+  "tags": ["ainxt", "sdlc", "observability"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {
+    "refresh_intervals": ["10s", "30s", "1m", "5m", "15m"],
+    "time_options": ["1h", "3h", "6h", "12h", "24h", "2d", "7d", "30d"]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "run_type",
+        "label": "Run Type",
+        "type": "custom",
+        "query": "feature,bug,all",
+        "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+         },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "hide": 0,
+        "options": [
+          { "text": "All",     "value": "$__all", "selected": true },
+          { "text": "feature", "value": "feature", "selected": false },
+          { "text": "bug",     "value": "bug",     "selected": false }
+        ],
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Pipeline Health — Today",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Runs Today",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue",  "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT COUNT(*) as value FROM sdlc_runs WHERE created_at >= NOW() - INTERVAL '24 hours'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Completed",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT COUNT(*) as value FROM sdlc_runs WHERE state IN ('COMPLETE','MERGED') AND created_at >= NOW() - INTERVAL '24 hours'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Failed",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT COUNT(*) as value FROM sdlc_runs WHERE state = 'FAILED' AND created_at >= NOW() - INTERVAL '24 hours'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Awaiting HITL Approval",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 5 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT COUNT(*) as value FROM sdlc_runs WHERE state IN ('AWAITING_DESIGN_APPROVAL','AWAITING_SOLUTION_APPROVAL','AWAITING_PR_APPROVAL','AWAITING_RE_REVIEW','MERGE_CONFLICT')",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Success Rate (24h)",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "green",  "value": 90 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE state IN ('COMPLETE','MERGED')) / NULLIF(COUNT(*),0), 1) as value FROM sdlc_runs WHERE created_at >= NOW() - INTERVAL '24 hours' AND state IN ('FAILED','COMPLETE','MERGED','CANCELLED')",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Avg Pipeline Duration",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 300 },
+              { "color": "red",    "value": 600 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (updated_at - created_at))),0) as value FROM sdlc_runs WHERE state IN ('COMPLETE','MERGED') AND created_at >= NOW() - INTERVAL '24 hours'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 8,
+      "type": "row",
+      "title": "Pipeline Volume & Trends",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "collapsed": false
+    },
+
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Pipeline Runs Over Time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "drawStyle": "bars",
+            "showPoints": "never",
+            "gradientMode": "none"
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "failed" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "completed" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "in_progress" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT date_trunc('hour', created_at) AS time, COUNT(*) FILTER (WHERE state IN ('COMPLETE','MERGED')) AS completed, COUNT(*) FILTER (WHERE state = 'FAILED') AS failed, COUNT(*) FILTER (WHERE state NOT IN ('FAILED','COMPLETE','MERGED','CANCELLED')) AS in_progress FROM sdlc_runs WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "type": "piechart",
+      "title": "Runs by Current State",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 6 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": ["value"] }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT state as metric, COUNT(*) as value FROM sdlc_runs WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY state ORDER BY value DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 11,
+      "type": "piechart",
+      "title": "Feature vs Bug",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 6 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": ["value"] }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT COALESCE(type,'unknown') as metric, COUNT(*) as value FROM sdlc_runs WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY type",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Stage-by-Stage Breakdown",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "collapsed": false
+    },
+
+    {
+      "id": 13,
+      "type": "bargauge",
+      "title": "Runs per Stage (where they currently are)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "red",    "value": 10 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT current_stage as metric, COUNT(*) as value FROM sdlc_runs WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND current_stage IS NOT NULL GROUP BY current_stage ORDER BY value DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 14,
+      "type": "bargauge",
+      "title": "Avg Time per Stage (seconds)",
+      "description": "Requires stage_duration_seconds logging — see logging gap notes",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "red",    "value": 180 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT e.stage as metric, ROUND(AVG(EXTRACT(EPOCH FROM (e.created_at - prev_e.created_at))),1) as value FROM sdlc_run_events e JOIN sdlc_run_events prev_e ON e.run_id = prev_e.run_id AND prev_e.created_at = (SELECT MAX(created_at) FROM sdlc_run_events WHERE run_id = e.run_id AND created_at < e.created_at) WHERE e.created_at BETWEEN $__timeFrom() AND $__timeTo() AND e.stage IS NOT NULL GROUP BY e.stage ORDER BY value DESC LIMIT 15",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Failure & Error Analysis",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "collapsed": false
+    },
+
+    {
+      "id": 16,
+      "type": "table",
+      "title": "Failed Runs",
+      "gridPos": { "h": 10, "w": 14, "x": 0, "y": 24 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "failed_at", "desc": true }]
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "width": 150, "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "error" },
+            "properties": [
+              { "id": "custom.width", "value": 400 },
+              { "id": "custom.displayMode", "value": "color-text" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "run_id" },
+            "properties": [{ "id": "custom.width", "value": 280 }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT id as run_id, type as run_type, jira_key, current_stage as failed_at_stage, COALESCE(error, 'unknown') as error, TO_CHAR(updated_at, 'YYYY-MM-DD HH24:MI') as failed_at FROM sdlc_runs WHERE state = 'FAILED' AND created_at BETWEEN $__timeFrom() AND $__timeTo() ORDER BY updated_at DESC LIMIT 50",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 17,
+      "type": "bargauge",
+      "title": "Failures by Stage",
+      "gridPos": { "h": 10, "w": 10, "x": 14, "y": 24 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT COALESCE(current_stage, 'unknown') as metric, COUNT(*) as value FROM sdlc_runs WHERE state = 'FAILED' AND created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY current_stage ORDER BY value DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 18,
+      "type": "row",
+      "title": "HITL Gates — Human-in-the-Loop",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "collapsed": false
+    },
+
+    {
+      "id": 19,
+      "type": "table",
+      "title": "Runs Awaiting Approval (Action Required)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 35 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": { "showHeader": true },
+      "fieldConfig": {
+        "defaults": { "custom": { "width": 160, "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "waiting_since" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green",  "value": null },
+                  { "color": "yellow", "value": 1800 },
+                  { "color": "red",    "value": 3600 }
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "state" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT id as run_id, type as run_type, jira_key, state, ROUND(EXTRACT(EPOCH FROM (NOW() - updated_at))) as waiting_since, TO_CHAR(updated_at, 'YYYY-MM-DD HH24:MI') as waiting_since_ts FROM sdlc_runs WHERE state IN ('AWAITING_DESIGN_APPROVAL','AWAITING_SOLUTION_APPROVAL','AWAITING_PR_APPROVAL','AWAITING_RE_REVIEW','MERGE_CONFLICT') ORDER BY updated_at ASC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "HITL Approval Wait Time (seconds) — rolling avg",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 43 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "drawStyle": "line",
+            "showPoints": "never"
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT e_approve.created_at AS time, EXTRACT(EPOCH FROM (e_approve.created_at - e_gate.created_at)) AS wait_seconds FROM sdlc_run_events e_gate JOIN sdlc_run_events e_approve ON e_gate.run_id = e_approve.run_id AND e_approve.to_state NOT LIKE 'AWAITING%' AND e_approve.created_at > e_gate.created_at WHERE e_gate.to_state LIKE 'AWAITING%' AND e_gate.created_at BETWEEN $__timeFrom() AND $__timeTo() ORDER BY time",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "Avg HITL Wait Time",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 43 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 1800 },
+              { "color": "red",    "value": 3600 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (e_approve.created_at - e_gate.created_at))),0) as value FROM sdlc_run_events e_gate JOIN sdlc_run_events e_approve ON e_gate.run_id = e_approve.run_id AND e_approve.to_state NOT LIKE 'AWAITING%' AND e_approve.created_at > e_gate.created_at WHERE e_gate.to_state LIKE 'AWAITING%' AND e_gate.created_at >= NOW() - INTERVAL '7 days'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 22,
+      "type": "stat",
+      "title": "Approval Rate",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 43 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "green",  "value": 90 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE actor != 'engineer-rejected') / NULLIF(COUNT(*),0), 1) as value FROM sdlc_run_events WHERE to_state NOT LIKE 'AWAITING%' AND from_state LIKE 'AWAITING%' AND created_at >= NOW() - INTERVAL '30 days'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 28,
+      "type": "row",
+      "title": "Per-Run Activity — Live Logs",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 51 },
+      "collapsed": false
+    },
+
+    {
+      "id": 29,
+      "type": "logs",
+      "title": "SDLC Pipeline Logs (all levels)",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 52 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"ainxt\"} | json | event =~ \"SDLC|\\\\[SM|\\\\[SDLC|sdlc|pipeline\"",
+          "refId": "A",
+          "maxLines": 300
+        }
+      ]
+    },
+
+    {
+      "id": 30,
+      "type": "logs",
+      "title": "SDLC Errors Only",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 62 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"ainxt\", log_level=\"error\"} | json | event =~ \"SDLC|\\\\[SM|sdlc|pipeline|failed\"",
+          "refId": "A",
+          "maxLines": 100
+        }
+      ]
+    },
+
+    {
+      "id": 31,
+      "type": "logs",
+      "title": "State Transitions Log",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 62 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"ainxt\"} | json | event =~ \"→|transition|CLASSIFYING|ANALYZING|DESIGNING|CODING|REVIEWING|TESTING|COMMITTING|AWAITING\"",
+          "refId": "A",
+          "maxLines": 200
+        }
+      ]
+    },
+
+    {
+      "id": 32,
+      "type": "row",
+      "title": "Run History Table",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 72 },
+      "collapsed": false
+    },
+
+    {
+      "id": 33,
+      "type": "table",
+      "title": "All Runs",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 73 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "started", "desc": true }]
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "width": 140, "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "state" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "mappings", "value": [
+                { "type": "value", "options": {
+                  "FAILED":                    { "color": "red",    "index": 0 },
+                  "CANCELLED":                 { "color": "grey",   "index": 1 },
+                  "COMPLETE":                  { "color": "green",  "index": 2 },
+                  "MERGED":                    { "color": "green",  "index": 3 },
+                  "MERGE_READY":               { "color": "teal",   "index": 4 },
+                  "AWAITING_PR_APPROVAL":      { "color": "orange", "index": 5 },
+                  "AWAITING_DESIGN_APPROVAL":  { "color": "orange", "index": 6 },
+                  "AWAITING_SOLUTION_APPROVAL":{ "color": "orange", "index": 7 },
+                  "AWAITING_RE_REVIEW":        { "color": "orange", "index": 8 },
+                  "MERGE_CONFLICT":            { "color": "red",    "index": 9 }
+                }}
+              ]}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "duration_s" },
+            "properties": [{ "id": "unit", "value": "s" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "jira_key" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "run_id" },
+            "properties": [{ "id": "custom.width", "value": 300 }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "rawSql": "SELECT id as run_id, type as run_type, jira_key, state, current_stage, ROUND(EXTRACT(EPOCH FROM (COALESCE(updated_at, NOW()) - created_at))) as duration_s, TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI') as started FROM sdlc_runs WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() ORDER BY created_at DESC LIMIT 100",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    }
+
+  ]
+}

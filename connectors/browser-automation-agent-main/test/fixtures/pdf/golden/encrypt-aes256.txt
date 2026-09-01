@@ -1,0 +1,3 @@
+numPages=1
+--- page 1 ---
+Confidential AES-256 text.

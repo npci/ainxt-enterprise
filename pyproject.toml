@@ -1,0 +1,75 @@
+# pyproject.toml — AiNxt Platform project metadata
+#
+# PEP 517/518/621 compliant. Used by pip 21.3+ natively — no extra tooling needed.
+#
+# Install variants:
+#   pip install -e .                      → editable install of the platform
+#   pip install -e ".[dev]"               → plus test and audit tooling
+#
+# Runtime dependencies are NOT duplicated here. They live in requirements.txt,
+# which is what the Dockerfile and CI install, so listing them twice would
+# guarantee the two drift apart. Install them alongside this package:
+#
+#   pip install -r requirements.txt && pip install -e ".[dev]"
+#
+# HSM support has no extra: it needs `py-hsm-client`, a vendor library that is
+# not published on PyPI, so pip cannot resolve it and declaring an extra here
+# would produce an install error rather than HSM support. See
+# core/ckms/hsm_provider.py — HSM_PROVIDER selects the backend at runtime and
+# the import is lazy, so the platform runs without the library present.
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ainxt-platform"
+version = "1.0.0"
+description = "Open-source AI platform for enterprise agentic workflows — build, deploy and govern AI agents, document pipelines and multi-model LLM workflows."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "National Payments Corporation of India" }]
+keywords = ["ai", "agents", "llm", "rag", "mcp", "sdlc", "enterprise"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+# Runtime dependencies are declared in requirements.txt, not here — see the
+# header note above. Leaving this empty is deliberate, not an oversight.
+dependencies = []
+
+# Development and testing tools
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "httpx>=0.28",          # async test client for FastAPI
+    "pip-audit>=2.7",       # CVE scanning
+]
+
+# ---------------------------------------------------------------------------
+# Package discovery
+# ---------------------------------------------------------------------------
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = [
+    "tests*",
+    "*.egg-info",
+    ".venv*",
+    "venv*",
+    "node_modules*",
+    "dist*",
+    "build*",
+]

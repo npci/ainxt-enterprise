@@ -1,0 +1,21 @@
+{
+  "test_name": "Wikipedia search assertion",
+  "base_url": "https://en.wikipedia.org",
+  "steps": [
+    { "action": "navigate", "url": "https://en.wikipedia.org/wiki/Main_Page" },
+    { "action": "type", "target": "#searchInput", "value": "Playwright (software)" },
+    { "action": "press_key", "value": "Enter" },
+    { "action": "wait", "condition": "url_matches:/wiki/Playwright" },
+    {
+      "action": "assert",
+      "target": "role=heading[name='Playwright']",
+      "matcher": "visible",
+      "critical": true
+    },
+    {
+      "action": "extract",
+      "target": "#firstHeading",
+      "value": "page_title"
+    }
+  ]
+}

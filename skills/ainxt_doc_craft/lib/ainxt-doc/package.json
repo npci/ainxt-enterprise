@@ -1,0 +1,7 @@
+{
+  "name": "ainxt-doc",
+  "version": "1.0.0",
+  "description": "Brand-aware document composition helpers for the AiNxt doc sandbox.",
+  "main": "index.js",
+  "license": "Apache-2.0"
+}

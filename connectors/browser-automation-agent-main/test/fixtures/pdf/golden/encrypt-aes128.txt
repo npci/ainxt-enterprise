@@ -1,0 +1,3 @@
+numPages=1
+--- page 1 ---
+Secret text via AES-128.

@@ -1,0 +1,155 @@
+# Secrets and local environment files
+.env
+.env.local
+.env.*.local
+.env.internal
+# install.sh copies .env to .env.backup.<timestamp> on every run, so a repo that
+# has been installed into holds untracked files full of previous secrets. They
+# were not ignored, so `git add -A` would have committed them.
+.env.backup*
+.env.bak
+.env.save
+# Organisation-specific env files. Never commit these — they hold real
+# infrastructure addresses and credentials. Enforced, not left to a checklist:
+# the release depended on someone remembering to uncomment one line here.
+.env.npci
+.env.*.internal
+*.pem
+*.key
+*.pfx
+*.p12
+*.crt
+*.cer
+secrets/
+
+# HSM configuration — may contain real HSM host addresses and credentials.
+# Use hsm-config.yml.example as the template. Never commit the real file.
+hsm-config.yml
+hsm-config.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+MANIFEST
+venv11/
+*.docx
+*.pdf
+.venv/
+venv/
+ENV/
+env/
+.python-version
+pip-log.txt
+
+# Type checking / linting
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+nosetests.xml
+test-results/
+test_reports/
+
+# Node / JS
+node_modules/
+ai-ui/node_modules/
+ai-ui/dist/
+ai-ui/.vite/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+.yarn/
+.pnp.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.npm/
+
+# Logs and dumps
+*.log
+log/
+logs/
+*.log.*
+*.stackdump
+*.dump
+*.out
+*.err
+imp_debug.log
+import_out.log
+probe.log
+probe2.log
+mock-server.log
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+__MACOSX/
+._*
+Thumbs.db
+desktop.ini
+
+# Data / uploads / generated artifacts
+uploads/
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker / Runtime artifacts
+*.pid
+*.seed
+*.pid.lock
+
+# Runtime working directories
+mock-backend/
+storage/
+
+# ABStudio runtime
+ABStudio/backend/data/agent_logs.jsonl
+
+# ABStudio runtime output directories — generated at runtime, must never be committed.
+# Contains OCR cache, workflow outputs, agent run artefacts, and uploaded documents.
+# These directories are created automatically by the platform on first run.
+# See: ABStudio/backend/app/core/ocr_cache.py, app/engine/native_engine.py
+ABStudio/backend/runtime_artifacts/
+ABStudio/backend/tmp/
+ABStudio/tmp/
+
+# OSS session working files (temp dependency resolution artifacts)
+tmp_dep_*.json
+AiNxt_OSS_Readiness_Report_*.docx
+
+# Pre-release audit reports — internal review material, never published.
+# These record unfixed findings, internal infrastructure references and
+# security observations verbatim, so committing them would defeat the point
+# of the audit that produced them. Ignored as a directory, including any
+# nested output, so no future report can be added by `git add -A`.
+AUDIT_OUTPUT/
+
+# Local AI/editor tool settings (per-developer, never shared)
+.claude/
+node_modules/

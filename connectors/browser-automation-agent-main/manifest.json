@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "AiNxt",
+  "version": "1.16.0",
+  "description": "AiNxt Browser Assistant — LLM-driven browser automation and UI testing. Side panel UI, OpenAI-compatible LLM, JSON/YAML test files.",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "sidePanel",
+    "scripting",
+    "tabs",
+    "tabGroups",
+    "activeTab",
+    "storage",
+    "alarms",
+    "downloads",
+    "webRequest",
+    "webNavigation",
+    "notifications",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open AiNxt",
+    "default_icon": {
+      "16": "icons/ainxt_logo_16X16.png",
+      "48": "icons/ainxt_logo_48X48.png",
+      "128": "icons/ainxt_logo_128X128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/ainxt_logo_16X16.png",
+    "48": "icons/ainxt_logo_48X48.png",
+    "128": "icons/ainxt_logo_128X128.png"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}

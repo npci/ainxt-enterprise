@@ -1,0 +1,14 @@
+{
+  "document": {
+    "doc_id": "dl-sbx-pan",
+    "type": "PAN",
+    "issuer": "Income Tax Dept (Sandbox)",
+    "name": "PAN Card",
+    "verified": true,
+    "holder_name": "ASHA SAMPLE KUMAR",
+    "pan": "ABCDE1234F",
+    "dob": "1990-01-01",
+    "issued_on": "2018-06-01"
+  },
+  "_note": "SYNTHETIC sandbox data only — PAN value is fake test data."
+}

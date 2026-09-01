@@ -1,0 +1,12 @@
+test_name: Login flow
+base_url: https://the-internet.herokuapp.com
+timeout_ms: 15000
+variables:
+  username: tomsmith
+steps:
+  - { action: navigate, url: "${base_url}/login" }
+  - { action: type, target: "#username", value: "${username}" }
+  - { action: type, target: "#password", value: "SuperSecretPassword!" }
+  - { action: click, target: "role=button[name='Login']" }
+  - { action: wait, condition: "url_matches:/secure" }
+  - { action: assert, target: "#flash", matcher: contains, expected: "logged into a secure area" }

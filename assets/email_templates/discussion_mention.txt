@@ -1,0 +1,9 @@
+You were mentioned in a discussion on AiNxt
+
+{{ author_name }} wants you to see a discussion.
+
+  Title  : {{ title }}
+  Details: {{ excerpt }}
+
+You're receiving this because you were added to this discussion on AiNxt.
+— AiNxt Platform

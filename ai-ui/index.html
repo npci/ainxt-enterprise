@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#111827" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AiNxt" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
+
+    <!-- Meta -->
+    <meta name="description" content="AiNxt Autonomous Agentic Engineering Platform — enterprise-grade multi-agent AI" />
+    <meta name="application-name" content="AiNxt" />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <title>AiNxt</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // ── Dev vs Prod service worker handling ────────────────────────────
+      // In dev (Vite at :5173), the SW caches the dev-mode index.html
+      // (base "/") and then serves it for /portal/ navigations, which
+      // breaks the first load with a blank page until a hard refresh
+      // bypasses the cache. Skip SW entirely in dev and proactively
+      // unregister any SW left over from a previous prod build.
+      const IS_DEV = ['localhost', '127.0.0.1'].includes(location.hostname) && location.port === '5173';
+
+      if ('serviceWorker' in navigator) {
+        if (IS_DEV) {
+          // Unregister any stale SW and clear caches so dev reloads stay clean.
+          // Hardcoded host/port check: this inline <script> is not a module,
+          // so import.meta.env.DEV is not available here.
+          navigator.serviceWorker.getRegistrations()
+            .then(regs => regs.forEach(reg => reg.unregister().catch(() => {})))
+            .catch(() => {});
+          if (window.caches && caches.keys) {
+            caches.keys()
+              .then(keys => keys.forEach(k => caches.delete(k).catch(() => {})))
+              .catch(() => {});
+          }
+        } else {
+          window.addEventListener('load', () => {
+            // The app is served under /portal/ (see Vite `base`). The SW file
+            // lives at /portal/sw.js, so use a URL relative to document.baseURI.
+            const swUrl = new URL('sw.js', document.baseURI).href;
+            navigator.serviceWorker
+              .register(swUrl, { scope: './' })
+              .then(reg => {
+                console.log('[SW] registered:', reg.scope);
+
+                if (reg.waiting && navigator.serviceWorker.controller) {
+                  reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+
+                reg.addEventListener('updatefound', () => {
+                  const newWorker = reg.installing;
+                  if (!newWorker) return;
+                  newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      console.log('[SW] update ready — activating now');
+                      newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                  });
+                });
+
+                const checkForUpdate = () => {
+                  if (document.visibilityState === 'visible') {
+                    reg.update().catch(() => {});
+                  }
+                };
+                document.addEventListener('visibilitychange', checkForUpdate);
+                window.addEventListener('focus', checkForUpdate);
+              })
+              .catch(e => console.warn('[SW] failed:', e));
+
+            // When the active service worker changes (new SW took control),
+            // reload the page so the user gets the latest assets.
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+              if (!refreshing) {
+                refreshing = true;
+                console.log('[SW] new version active — reloading');
+                window.location.reload();
+              }
+            });
+          });
+        }
+      }
+    </script>
+  </body>
+</html>

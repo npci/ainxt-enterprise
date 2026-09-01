@@ -1,0 +1,52 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: ainxt
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: ainxt
+          env: production
+          __path__: /app/logs/agent.log
+      - targets:
+          - localhost
+        labels:
+          job: ainxt
+          env: production
+          __path__: /app/log/app/agent.log
+    pipeline_stages:
+      - json:
+          expressions:
+            level: level
+            timestamp: timestamp
+            ts: ts
+            message: message
+            msg: msg
+            event: event
+            service: service
+            host: host
+            agent_id: agent_id
+            pipeline_stage: pipeline_stage
+            task_id: task_id
+            correlation_id: correlation_id
+            request_id: request_id
+      - labels:
+          service:
+          host:
+          agent_name: agent_id
+          pipeline_stage:
+          log_level: level
+      - template:
+          source: log_message
+          template: '{{ if .message }}{{ .message }}{{ else if .msg }}{{ .msg }}{{ else if .event }}{{ .event }}{{ else }}log{{ end }}'
+      - output:
+          source: log_message

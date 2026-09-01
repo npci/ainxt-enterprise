@@ -1,0 +1,206 @@
+/*
+ * LoopWhileEditor — styles for the Loop node's single-card while-condition
+ * editor. Intentionally separate from ConditionBuilder.css so the Conditional
+ * node's routing-card aesthetic and the Loop's flat single-card aesthetic
+ * can evolve independently.
+ *
+ * Layout target (matches the original Loop screenshot):
+ *
+ *   ┌───────────────────────────────────────────────┐
+ *   │ Continue while                                │
+ *   │ ┌──────────────────────────────┐ ┌────────┐   │
+ *   │ │ <field select>               │ │ ...    │   │   ← row 1 (field + suggest spacer)
+ *   │ └──────────────────────────────┘ └────────┘   │
+ *   │ ┌─────┐ ┌────────┐ ┌────────────────────┐     │
+ *   │ │ op  │ │ value  │                            │   ← actually flat:
+ *   │ └─────┘ └────────┘                            │     [field][op][value][x]
+ *   └───────────────────────────────────────────────┘
+ *
+ *   [+ Add condition]
+ *
+ *   ──────────────────────────────────
+ *   EVALUATES TO
+ *   ┌───────────────────────────────────────────────┐
+ *   │ input.priority == ''                          │
+ *   └───────────────────────────────────────────────┘
+ */
+
+.loop-while-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Outer card — soft rounded border, no shadow, matches the screenshot's
+   subtle container. */
+.lwe-card {
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 16px;
+    background: var(--color-surface, #ffffff);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.lwe-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.lwe-header-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary, #1f2937);
+}
+
+.lwe-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.lwe-empty {
+    font-size: 12px;
+    color: var(--color-text-secondary, #6b7280);
+    padding: 8px;
+    background: rgba(241, 245, 249, 0.6);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.lwe-row-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.lwe-row-connector {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary, #6b7280);
+    padding-left: 4px;
+}
+
+/* Single-line row: [field select][op select][value input][× remove] */
+.loop-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.4fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.loop-row .form-select,
+.loop-row .form-input {
+    min-width: 0;
+    width: 100%;
+}
+
+/* Inline hint rendered under a loop row when extra context is needed
+   (today: Confidence Score scale guidance). grid-column: 1 / -1 makes
+   it span all four columns of the .loop-row grid so it sits cleanly
+   beneath the field/op/value/remove cluster. */
+.loop-row-hint {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--color-text-secondary, #64748b);
+}
+.loop-row-hint strong {
+    color: #0f172a;
+    font-weight: 600;
+}
+.loop-row-hint code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.10);
+    color: #4338ca;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+}
+
+.loop-row-remove {
+    border: 1px solid rgba(148, 163, 184, 0.32);
+    background: transparent;
+    color: var(--color-text-secondary, #6b7280);
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.loop-row-remove:hover {
+    background: rgba(239, 68, 68, 0.08);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.32);
+}
+
+/* "+ Add condition" — pill-style link button, indigo to match the screenshot. */
+.lwe-add-row {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    background: rgba(99, 102, 241, 0.08);
+    color: #4f46e5;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.lwe-add-row:hover {
+    background: rgba(99, 102, 241, 0.14);
+    border-color: rgba(99, 102, 241, 0.36);
+}
+
+/* "EVALUATES TO" preview block — flat panel with a small uppercase label and
+   a monospace expression rendered in indigo, matching the screenshot. */
+.lwe-expr {
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.lwe-expr-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--color-text-secondary, #6b7280);
+}
+
+.lwe-expr-code {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(241, 245, 249, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    color: #4f46e5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media (max-width: 480px) {
+    .loop-row {
+        grid-template-columns: 1fr;
+    }
+    .loop-row-remove {
+        justify-self: end;
+    }
+}

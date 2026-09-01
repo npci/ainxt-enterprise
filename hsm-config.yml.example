@@ -1,0 +1,24 @@
+# ============================================================
+# HSM Configuration — example template
+# ============================================================
+#
+# Copy this file to hsm-config.yml and fill in your HSM details.
+# hsm-config.yml is gitignored — never commit the real file.
+#
+# This file is only needed when CKMS_ENABLED=true (HSM mode).
+# OSS users with CKMS_ENABLED=false (default) do not need this file.
+#
+# Override the config file path via env var:
+#   HSM_CONFIG_PATH=/path/to/your/hsm-config.yml
+# ============================================================
+
+hsm:
+  nodes:
+    - host: "your-hsm-host"   # HSM server hostname or IP
+      port: 8082               # HSM service port
+  timeout: 5                   # TCP connection timeout (seconds)
+  retries: 2                   # Retry attempts on transient failure
+  enable_hex_dump: false        # Set true only for debugging (logs key material — never in prod)
+
+logging:
+  level: "INFO"                 # DEBUG for troubleshooting, INFO for production

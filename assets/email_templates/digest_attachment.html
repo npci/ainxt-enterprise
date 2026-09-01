@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AiNxt — {% if digest_type == "manager" %}Team{% else %}HOD{% endif %} Monthly Usage Digest · {{ department.department_name }} · {{ billing_period_label }}</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0;
+    background: #f5f7fa;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1f2937;
+    line-height: 1.45;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .card {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: #ffffff;
+    padding: 28px 32px;
+  }
+  .brand { font-size: 22px; font-weight: 700; letter-spacing: .3px; }
+  .sub   { font-size: 14px; opacity: .85; margin-top: 2px; }
+  .h1    { margin-top: 18px; font-size: 22px; font-weight: 600; }
+  .h1 .corrected { opacity: .9; font-weight: 400; font-size: 15px; margin-left: 6px; }
+  .period { margin-top: 4px; font-size: 14px; opacity: .9; }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    padding: 18px 24px 24px 24px;
+  }
+  .kpi {
+    border-radius: 6px;
+    padding: 14px;
+  }
+  .kpi .label { font-size: 11px; letter-spacing: .6px; text-transform: uppercase; }
+  .kpi .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .kpi.cost     { background: #fef3c7; color: #92400e; }
+  .kpi.tokens   { background: #dcfce7; color: #166534; }
+  .kpi.requests { background: #eef2ff; color: #4338ca; }
+  .kpi.users    { background: #fce7f3; color: #9d174d; }
+
+  .section { padding: 20px 32px; }
+  .section h2 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    color: #1e3a8a;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 6px;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .badge.llm    { background: #ede9fe; color: #5b21b6; }
+  .badge.fallback { background: #fef3c7; color: #92400e; }
+
+  .insights {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .insights .col {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 14px;
+  }
+  .insights h3 { margin: 0 0 8px 0; font-size: 13px; color: #374151; text-transform: uppercase; letter-spacing: .4px; }
+  .insights .col.top    h3 { color: #166534; }
+  .insights .col.bottom h3 { color: #991b1b; }
+  .insights ul { margin: 0; padding-left: 18px; }
+  .insights li { font-size: 13px; margin-bottom: 4px; }
+  .insights .who    { font-weight: 600; }
+  .insights .reason { color: #6b7280; }
+  .narrative {
+    margin-top: 14px;
+    background: #ffffff;
+    border-left: 3px solid #6366f1;
+    padding: 10px 14px;
+    color: #374151;
+    font-size: 14px;
+    border-radius: 0 6px 6px 0;
+  }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.data th, table.data td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+  }
+  table.data thead th {
+    background: #f3f4f6;
+    color: #374151;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 0;
+  }
+  table.data thead th .arrow { font-size: 10px; opacity: .5; margin-left: 4px; }
+  table.data tbody tr:hover { background: #f9fafb; }
+  table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data th.num { text-align: right; }
+
+  .name-btn {
+    background: none;
+    border: 0;
+    color: #1d4ed8;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-align: left;
+    text-decoration: underline;
+  }
+
+  .util-bar {
+    display: inline-block;
+    width: 80px;
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  .util-bar > span { display: block; height: 100%; }
+
+  .back-btn {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    color: #1f2937;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .back-btn:hover { background: #e5e7eb; }
+
+  .user-detail .meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 12px 0 20px 0;
+  }
+  .user-detail .meta .kpi { padding: 10px 12px; }
+  .user-detail .meta .kpi .value { font-size: 18px; }
+
+  .footer {
+    text-align: center;
+    color: #6b7280;
+    font-size: 12px;
+    padding: 12px;
+  }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 768px) {
+    .container { padding: 12px; }
+    .kpis     { grid-template-columns: repeat(2, 1fr); }
+    .insights { grid-template-columns: 1fr; }
+    .user-detail .meta { grid-template-columns: repeat(2, 1fr); }
+
+    table.data thead { display: none; }
+    table.data, table.data tbody, table.data tr, table.data td { display: block; width: 100%; }
+    table.data tr {
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+    }
+    table.data td {
+      border: none;
+      padding: 4px 0;
+      display: flex;
+      justify-content: space-between;
+    }
+    table.data td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      color: #6b7280;
+      margin-right: 8px;
+    }
+    table.data td.num { text-align: right; }
+  }
+</style>
+</head>
+<body>
+
+<script type="application/json" id="hod-data">{{ hod_data_json | safe }}</script>
+
+<div class="container">
+
+  <!-- =============== HEADER =============== -->
+  <div class="card">
+    <div class="header">
+      <div class="brand">AiNxt</div>
+      <div class="sub">AiNxt · AI Platform</div>
+      <div class="h1">
+        {% if digest_type == "manager" %}
+          Team Monthly Usage Digest — {{ department.department_name }}
+        {% else %}
+          HOD Monthly Usage Digest — {{ department.department_name }}
+          {% if department.corrected_department_name and department.corrected_department_name != department.department_name %}
+            <span class="corrected">({{ department.corrected_department_name }})</span>
+          {% endif %}
+        {% endif %}
+      </div>
+      <div class="period">Billing Period: {{ billing_period_label }}</div>
+      {% if digest_type == "manager" %}
+        {% if manager.name %}
+          <div class="period">Manager: {{ manager.name }} &lt;{{ manager.email }}&gt;</div>
+        {% else %}
+          <div class="period">Manager: {{ manager.email or department.hod_email }}</div>
+        {% endif %}
+      {% else %}
+        {% if department.hod_name %}
+          <div class="period">HOD: {{ department.hod_name }} &lt;{{ department.hod_email }}&gt;</div>
+        {% else %}
+          <div class="period">HOD: {{ department.hod_email }}</div>
+        {% endif %}
+      {% endif %}
+    </div>
+    <div class="kpis">
+      <div class="kpi cost">
+        <div class="label">Total Cost</div>
+        <div class="value">${{ "%.2f"|format(roster_totals.total_cost) }}</div>
+      </div>
+      <div class="kpi tokens">
+        <div class="label">Total Tokens</div>
+        <div class="value">{{ "{:,}".format(roster_totals.total_tokens) }}</div>
+      </div>
+      <div class="kpi requests">
+        <div class="label">Total Requests</div>
+        <div class="value">{{ "{:,}".format(roster_totals.total_requests) }}</div>
+      </div>
+      <div class="kpi users">
+        <div class="label">Active Users</div>
+        <div class="value">{{ roster_totals.user_count }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============== INFERENCES =============== -->
+  {% if inferences.top_performers or inferences.underperformers %}
+  <div class="card">
+    <div class="section">
+      <h2>
+        Insights
+        {% if inferences.source == "llm" %}
+          <span class="badge llm">AI-generated insights</span>
+        {% else %}
+          <span class="badge fallback">Computed from raw data</span>
+        {% endif %}
+      </h2>
+      <div class="insights">
+        <div class="col top">
+          <h3>Top performers</h3>
+          {% if inferences.top_performers %}
+            <ul>
+              {% for p in inferences.top_performers %}
+                <li><span class="who">{{ p.name }}</span> — <span class="reason">{{ p.reason }}</span></li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="reason">No entries.</div>
+          {% endif %}
+        </div>
+        <div class="col bottom">
+          <h3>Needs attention</h3>
+          {% if inferences.underperformers %}
+            <ul>
+              {% for p in inferences.underperformers %}
+                <li><span class="who">{{ p.name }}</span> — <span class="reason">{{ p.reason }}</span></li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="reason">No entries.</div>
+          {% endif %}
+        </div>
+      </div>
+      {% if inferences.narrative %}
+        <div class="narrative">{{ inferences.narrative }}</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- =============== ROSTER TABLE =============== -->
+  <div class="card" id="roster">
+    <div class="section">
+      <h2>Roster ({{ roster_totals.user_count }} active users)</h2>
+      <table class="data" id="roster-table">
+        <thead>
+          <tr>
+            <th data-key="name">Name<span class="arrow">▾</span></th>
+            <th data-key="email">Email<span class="arrow">▾</span></th>
+            <th class="num" data-key="cost" data-num="1">Cost (USD)<span class="arrow">▾</span></th>
+            <th class="num" data-key="tokens" data-num="1">Tokens<span class="arrow">▾</span></th>
+            <th class="num" data-key="requests" data-num="1">Requests<span class="arrow">▾</span></th>
+            <th class="num" data-key="util" data-num="1">Utilization<span class="arrow">▾</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+            {% set util = u.summary.utilization_pct %}
+            {% if util < 60 %}{% set util_color = "#10b981" %}
+            {% elif util < 90 %}{% set util_color = "#f59e0b" %}
+            {% else %}{% set util_color = "#ef4444" %}
+            {% endif %}
+            <tr data-uid="{{ u.user_id }}"
+                data-name="{{ u.name|e }}"
+                data-email="{{ u.email|e }}"
+                data-cost="{{ "%.6f"|format(u.summary.total_cost) }}"
+                data-tokens="{{ u.summary.total_tokens }}"
+                data-requests="{{ u.summary.total_requests }}"
+                data-util="{{ "%.4f"|format(util) }}">
+              <td data-label="Name">
+                <button class="name-btn" type="button">{{ u.name or u.email or u.user_id }}</button>
+              </td>
+              <td data-label="Email">{{ u.email or "—" }}</td>
+              <td data-label="Cost (USD)" class="num">${{ "%.2f"|format(u.summary.total_cost) }}</td>
+              <td data-label="Tokens" class="num">{{ "{:,}".format(u.summary.total_tokens) }}</td>
+              <td data-label="Requests" class="num">{{ "{:,}".format(u.summary.total_requests) }}</td>
+              <td data-label="Utilization" class="num">
+                <span class="util-bar"><span style="width:{{ [util, 100]|min }}%;background:{{ util_color }};"></span></span>
+                {{ "%.1f"|format(util) }}%
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- =============== USER DETAIL =============== -->
+  <div class="card hidden user-detail" id="user-detail">
+    <div class="section">
+      <button class="back-btn" id="back-btn" type="button">← Back to roster</button>
+      <h2 id="ud-title" style="margin-top:14px;">User</h2>
+      <div id="ud-subtitle" style="color:#6b7280;font-size:13px;margin-top:-6px;"></div>
+
+      <div class="meta">
+        <div class="kpi cost"><div class="label">Cost</div><div class="value" id="ud-cost">$0.00</div></div>
+        <div class="kpi tokens"><div class="label">Tokens</div><div class="value" id="ud-tokens">0</div></div>
+        <div class="kpi requests"><div class="label">Requests</div><div class="value" id="ud-requests">0</div></div>
+        <div class="kpi users"><div class="label">Utilization</div><div class="value" id="ud-util">0%</div></div>
+      </div>
+
+      <h2>Day-wise usage</h2>
+      <table class="data" id="ud-daily">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th class="num">Requests</th>
+            <th class="num">Input</th>
+            <th class="num">Output</th>
+            <th class="num">Total Tokens</th>
+            <th class="num">Cost</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <h2 style="margin-top:20px;">Model-wise usage</h2>
+      <table class="data" id="ud-models">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th class="num">Requests</th>
+            <th class="num">Input</th>
+            <th class="num">Output</th>
+            <th class="num">Total Tokens</th>
+            <th class="num">Cost</th>
+            <th class="num">%</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <h2 style="margin-top:20px;">Channel-wise usage</h2>
+      <table class="data" id="ud-channels">
+        <thead>
+          <tr>
+            <th>Channel</th>
+            <th class="num">Requests</th>
+            <th class="num">Input</th>
+            <th class="num">Output</th>
+            <th class="num">Total Tokens</th>
+            <th class="num">Cost</th>
+            <th class="num">%</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    Generated {{ generated_at_ist }} · Generated by AiNxt
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var dataEl = document.getElementById("hod-data");
+  var HOD = {};
+  try { HOD = JSON.parse(dataEl.textContent || "{}"); } catch (e) { HOD = {}; }
+  var USERS_BY_ID = {};
+  (HOD.users || []).forEach(function (u) { USERS_BY_ID[u.user_id] = u; });
+
+  function fmtMoney(n)  { return "$" + (Number(n) || 0).toFixed(2); }
+  function fmtInt(n)    { return (Number(n) || 0).toLocaleString(); }
+  function fmtPct(n)    { return (Number(n) || 0).toFixed(1) + "%"; }
+
+  // ── Sortable roster table ──────────────────────────────────────
+  var rosterTable = document.getElementById("roster-table");
+  if (rosterTable) {
+    var headers = rosterTable.querySelectorAll("thead th");
+    var sortState = { key: null, asc: true };
+    headers.forEach(function (th) {
+      th.addEventListener("click", function () {
+        var key   = th.getAttribute("data-key");
+        var isNum = th.getAttribute("data-num") === "1";
+        if (!key) return;
+        if (sortState.key === key) { sortState.asc = !sortState.asc; }
+        else                       { sortState.key = key; sortState.asc = true; }
+        var tbody = rosterTable.querySelector("tbody");
+        var rows  = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+        rows.sort(function (a, b) {
+          var av = a.getAttribute("data-" + key) || "";
+          var bv = b.getAttribute("data-" + key) || "";
+          if (isNum) { av = parseFloat(av); bv = parseFloat(bv); }
+          if (av < bv) return sortState.asc ? -1 : 1;
+          if (av > bv) return sortState.asc ?  1 : -1;
+          return 0;
+        });
+        rows.forEach(function (r) { tbody.appendChild(r); });
+        headers.forEach(function (h) { var a = h.querySelector(".arrow"); if (a) a.textContent = "▾"; });
+        var arrow = th.querySelector(".arrow"); if (arrow) arrow.textContent = sortState.asc ? "▲" : "▼";
+      });
+    });
+  }
+
+  // ── Drill-down view ────────────────────────────────────────────
+  var rosterPanel = document.getElementById("roster");
+  var detailPanel = document.getElementById("user-detail");
+  var backBtn     = document.getElementById("back-btn");
+
+  function renderTableBody(tbodySel, rows, cols) {
+    var tbody = document.querySelector(tbodySel + " tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    if (!rows || rows.length === 0) {
+      var tr = document.createElement("tr");
+      var td = document.createElement("td");
+      td.colSpan = cols.length;
+      td.textContent = "No data";
+      td.style.color = "#9ca3af";
+      td.style.textAlign = "center";
+      tr.appendChild(td); tbody.appendChild(tr);
+      return;
+    }
+    rows.forEach(function (r) {
+      var tr = document.createElement("tr");
+      cols.forEach(function (c) {
+        var td = document.createElement("td");
+        if (c.label)  td.setAttribute("data-label", c.label);
+        if (c.num)    td.className = "num";
+        td.textContent = c.fmt ? c.fmt(r) : (r[c.key] != null ? r[c.key] : "");
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function showUser(uid, pushHist) {
+    var u = USERS_BY_ID[uid];
+    if (!u) return;
+
+    document.getElementById("ud-title").textContent    = u.name || u.email || uid;
+    document.getElementById("ud-subtitle").textContent =
+      (u.email || "") + (u.department ? " · " + u.department : "");
+    document.getElementById("ud-cost").textContent     = fmtMoney(u.summary.total_cost);
+    document.getElementById("ud-tokens").textContent   = fmtInt(u.summary.total_tokens);
+    document.getElementById("ud-requests").textContent = fmtInt(u.summary.total_requests);
+    document.getElementById("ud-util").textContent     = fmtPct(u.summary.utilization_pct);
+
+    renderTableBody("#ud-daily", u.daily || [], [
+      { label: "Date",         fmt: function (r) { return r.date; } },
+      { label: "Requests",     num: true, fmt: function (r) { return fmtInt(r.requests); } },
+      { label: "Input",        num: true, fmt: function (r) { return fmtInt(r.input_tokens); } },
+      { label: "Output",       num: true, fmt: function (r) { return fmtInt(r.output_tokens); } },
+      { label: "Total Tokens", num: true, fmt: function (r) { return fmtInt(r.total_tokens); } },
+      { label: "Cost",         num: true, fmt: function (r) { return fmtMoney(r.cost); } }
+    ]);
+
+    renderTableBody("#ud-models", u.models || [], [
+      { label: "Model",        fmt: function (r) { return r.display_name || r.model; } },
+      { label: "Requests",     num: true, fmt: function (r) { return fmtInt(r.requests); } },
+      { label: "Input",        num: true, fmt: function (r) { return fmtInt(r.input_tokens); } },
+      { label: "Output",       num: true, fmt: function (r) { return fmtInt(r.output_tokens); } },
+      { label: "Total Tokens", num: true, fmt: function (r) { return fmtInt(r.total_tokens); } },
+      { label: "Cost",         num: true, fmt: function (r) { return fmtMoney(r.cost); } },
+      { label: "%",            num: true, fmt: function (r) { return fmtPct(r.pct); } }
+    ]);
+
+    renderTableBody("#ud-channels", u.channels || [], [
+      { label: "Channel",      fmt: function (r) { return r.display_name || r.channel; } },
+      { label: "Requests",     num: true, fmt: function (r) { return fmtInt(r.requests); } },
+      { label: "Input",        num: true, fmt: function (r) { return fmtInt(r.input_tokens); } },
+      { label: "Output",       num: true, fmt: function (r) { return fmtInt(r.output_tokens); } },
+      { label: "Total Tokens", num: true, fmt: function (r) { return fmtInt(r.total_tokens); } },
+      { label: "Cost",         num: true, fmt: function (r) { return fmtMoney(r.cost); } },
+      { label: "%",            num: true, fmt: function (r) { return fmtPct(r.pct); } }
+    ]);
+
+    rosterPanel.classList.add("hidden");
+    detailPanel.classList.remove("hidden");
+
+    if (pushHist !== false) {
+      try { history.pushState({ uid: uid }, "", "#u=" + encodeURIComponent(uid)); }
+      catch (e) { /* ignore */ }
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function showRoster(pushHist) {
+    detailPanel.classList.add("hidden");
+    rosterPanel.classList.remove("hidden");
+    if (pushHist !== false) {
+      try { history.pushState({ uid: null }, "", "#"); }
+      catch (e) { /* ignore */ }
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Wire roster row buttons
+  document.querySelectorAll("#roster-table tbody tr").forEach(function (tr) {
+    var btn = tr.querySelector(".name-btn");
+    if (!btn) return;
+    btn.addEventListener("click", function () { showUser(tr.getAttribute("data-uid"), true); });
+  });
+
+  if (backBtn) backBtn.addEventListener("click", function () { showRoster(true); });
+
+  window.addEventListener("popstate", function (ev) {
+    var uid = ev.state && ev.state.uid;
+    if (uid) showUser(uid, false);
+    else     showRoster(false);
+  });
+
+  // Honour initial #u=... fragment if present
+  var hash = window.location.hash || "";
+  var m = hash.match(/^#u=(.+)$/);
+  if (m) { showUser(decodeURIComponent(m[1]), false); }
+})();
+</script>
+
+</body>
+</html>

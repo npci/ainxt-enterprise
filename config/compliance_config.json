@@ -1,0 +1,89 @@
+{
+  "_comment": "Per-type compliance configuration. action: 'redact' | 'block' | 'off'. enabled: true | false. Reload via POST /admin/compliance/config/reload (admin).",
+  "types": {
+    "PAN": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "CVV": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "EXPIRY": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "PIN_BLOCK": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "SECRET": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "API_KEY": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "ACCESS_TOKEN": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "PRIVATE_KEY_LEAK": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "CERTIFICATE_LEAK": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "SSH_KEY_LEAK": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "KEY_ASSIGNMENT_LEAK": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "PAYMENT_KEY_LEAK": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "INDIA_PAN": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "AADHAAR": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "EMAIL": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "MOBILE": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "UPI": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "ACCOUNT_NUMBER": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "IFSC_CODE": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "ACCOUNT_NAME_COMBO": {
+      "enabled": true,
+      "action": "redact"
+    },
+    "IP_ADDRESS": {
+      "enabled": true,
+      "action": "redact"
+    }
+  }
+}

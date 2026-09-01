@@ -1,0 +1,41 @@
+{
+  "_comment": "Context window sizes and output token reservations per model family. Keys are matched as case-insensitive substrings against model names — first match wins. Add new model families here to extend support without code changes. Set MODEL_CONTEXT_CONFIG=/path/to/your/file.json to use a custom path.",
+  "context_windows": {
+    "claude":    200000,
+    "sonnet":    200000,
+    "opus":      200000,
+    "haiku":     200000,
+    "gpt-5":     256000,
+    "gpt-4":     128000,
+    "gpt":       128000,
+    "gemini":   1000000,
+    "kimi":      262144,
+    "glm":       131072,
+    "qwen":      131072,
+    "deepseek":   65536,
+    "llama":     131072,
+    "gemma":     131072,
+    "mistral":   131072,
+    "gpt-oss":   131072,
+    "local":     128000
+  },
+  "reserved_output": {
+    "claude":    8000,
+    "sonnet":    8000,
+    "opus":      8000,
+    "haiku":     4000,
+    "gpt-5":    16000,
+    "gpt-4":     4000,
+    "gpt":       4000,
+    "gemini":    8000,
+    "kimi":      8000,
+    "glm":       4000,
+    "qwen":      4000,
+    "deepseek":  4000,
+    "llama":     4000,
+    "gemma":     4000,
+    "mistral":   4000,
+    "gpt-oss":   4000,
+    "local":     2000
+  }
+}

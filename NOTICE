@@ -1,0 +1,146 @@
+AiNxt Platform
+Copyright 2026 National Payments Corporation of India
+
+This product is licensed under the Apache License, Version 2.0.
+You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+---
+
+## Third-Party Notices
+
+This product includes or depends on third-party software with the following
+licenses. Each package's full license text is available in its respective
+distribution or source repository.
+
+---
+
+### Apache-2.0 Dependencies Requiring NOTICE Preservation
+
+The following dependencies are licensed under Apache-2.0 and require that
+their copyright and attribution notices be preserved in distributions:
+
+| Package | Source |
+|---------|--------|
+| `paddleocr` | https://github.com/PaddlePaddle/PaddleOCR |
+| `paddlepaddle` | https://github.com/PaddlePaddle/Paddle |
+| `onnxruntime` | https://github.com/microsoft/onnxruntime |
+| `rapidocr-onnxruntime` | https://github.com/RapidAI/RapidOCR |
+| `sentence-transformers` | https://github.com/UKPLab/sentence-transformers |
+| `torch` (PyTorch) | https://github.com/pytorch/pytorch |
+| `tokenizers` | https://github.com/huggingface/tokenizers |
+| `prometheus_client` | https://github.com/prometheus/client_python |
+| `playwright` | https://github.com/microsoft/playwright-python |
+| `SheetJS / xlsx` (npm) | https://github.com/SheetJS/sheetjs |
+| `@nut-tree-fork/nut-js` (npm) | https://github.com/nut-tree-fork/nut.js |
+
+---
+
+### LGPL Dependencies
+
+The following dependencies are licensed under the GNU Lesser General Public
+License (LGPL). They are used unmodified as libraries; no LGPL obligations
+are triggered for the AiNxt Platform codebase itself.
+
+| Package | License | Source |
+|---------|---------|--------|
+| `ldap3` | LGPL-3.0 | https://github.com/cannatag/ldap3 |
+| `psycopg2` / `psycopg` | LGPL-3.0 | https://github.com/psycopg/psycopg2 |
+
+---
+
+### Vendored Third-Party Code
+
+#### ABStudio Skills — First-party AiNxt Skills
+
+`ABStudio/skills/ainxt-skills/` contains first-party AiNxt skills authored by
+National Payments Corporation of India and released under Apache-2.0.
+
+- Copyright: Copyright 2026 National Payments Corporation of India
+- License: Apache-2.0 — see `LICENSE.txt` in each skill directory (where
+  present) or `SPDX-License-Identifier: Apache-2.0` in source files.
+
+Skills included:
+
+| Skill directory      | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `brand-guidelines/`  | Provider-neutral brand styling skill             |
+| `canvas-design/`     | Visual design and poster creation skill          |
+| `frontend-design/`   | Production-grade frontend interface skill        |
+| `skill-creator/`     | Skill authoring, evaluation, and iteration skill |
+| `doc-coauthoring/`   | Structured documentation co-authoring workflow   |
+| `dslar-*/`           | AiNxt DL-SAR audit validation skills             |
+
+#### Cowork skill prompts — first-party AiNxt content
+
+- Location: `scripts/seed_cowork_skills.py` (prompt text only)
+- Copyright: Copyright 2026 National Payments Corporation of India
+- License: Apache-2.0
+
+#### Browser Automation Agent
+- Location: `connectors/browser-automation-agent-main/`
+- License: Apache-2.0 (first-party AiNxt code)
+- Copyright: Copyright 2026 National Payments Corporation of India
+- Note: This is first-party AiNxt code, not a vendored third-party library.
+  There is no separate `LICENSE` file or `lib/vendor/` directory in this tree.
+
+---
+
+All other dependencies are MIT, BSD-2-Clause, BSD-3-Clause, ISC, or
+similarly permissive. See `requirements.txt` and the `package.json` files
+for the complete dependency list.
+
+--------------------------------------------------------------------------------
+TRADEMARKS
+
+Third-party trademarks
+----------------------
+
+This software names other companies' products in order to say what it
+interoperates with, is built on, or can be configured to talk to. Depending on the
+repository, that includes marks such as AWS, Amazon, GitHub, GitLab, Google,
+Microsoft, Azure, Slack, Atlassian/Jira/Confluence, Docker, Kubernetes, OpenAI,
+Anthropic, Claude, Gemini, JetBrains, IntelliJ and Visual Studio Code.
+
+All such marks are the property of their respective owners. They are used here
+**nominatively** -- that is, to identify the third party's own product accurately,
+which is what the law permits without a licence. Their appearance does not imply
+that this project is endorsed by, affiliated with, sponsored by or certified by any
+of those owners, and no such claim is made anywhere in this software or its
+documentation.
+
+Directory and file names that happen to contain a third-party mark (for example a
+`.vscode/` or `.claude/` configuration directory that this software must read) are
+filesystem paths defined by those tools, not a use of the mark as branding.
+
+If you are an owner of one of these marks and consider any usage here incorrect,
+the contact route in SECURITY.md reaches the maintainers.
+
+--------------------------------------------------------------------------------
+
+The Apache License, Version 2.0 is a copyright and patent licence. Its Section 6
+explicitly does NOT grant permission to use the licensor's trade names,
+trademarks, service marks or product names. This section states the position
+plainly so that adopters do not have to infer it.
+
+"AiNxt", the AiNxt name, and the AiNxt logos and marks -- including any brand
+imagery committed under `assets/`, `ai-ui/public/` and `desktop/build/` -- identify the origin
+of this software. The copyright grant lets you use and redistribute those files
+as part of this software; it does not give you the right to use the marks as your
+own brand.
+
+You MAY:
+  * redistribute the marks unmodified as part of an unmodified distribution of
+    this software; and
+  * use the name nominatively -- to describe accurately what your software is
+    built on, integrates with, or is derived from.
+
+You MAY NOT, without separate written permission:
+  * use the marks in a way that suggests your fork, product or service is the
+    official one, or is endorsed by or affiliated with this project; or
+  * use the marks as, or as part of, your own product or organisation name.
+
+If you fork this project and distribute it under your own name, replace the brand
+assets with your own. The code is yours to use under Apache-2.0; the marks
+identify whose project it is.

@@ -1,0 +1,17 @@
+{
+  "name": "agent-chain-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Workspace runner for the Agent Chain backend and frontend",
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c green,blue \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "node scripts/run-backend.js",
+    "dev:frontend": "npm --prefix frontend run dev -- --host 0.0.0.0 --port 5174 --strictPort",
+    "install:all": "npm install && npm --prefix frontend install",
+    "build": "npm --prefix frontend run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "license": "Apache-2.0"
+}

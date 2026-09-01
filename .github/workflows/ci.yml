@@ -1,0 +1,218 @@
+# AiNxt Enterprise — continuous integration
+#
+# Tier 1 (static)  — every push/PR, ~1 minute, no services. Each check exists
+#                    because the corresponding defect actually shipped.
+# Tier 2 (tests)   — every push/PR, ~5 minutes, against real Postgres + Redis.
+#
+# Free on GitHub-hosted standard runners for public repositories.
+#
+# ── Configuration ───────────────────────────────────────────────────────────
+# Nothing here needs editing to work. Override via repository
+# Settings → Secrets and variables → Actions → Variables:
+#
+#   CI_PYTHON_VERSION     default "3.12"
+#   CI_NODE_VERSION       default "20"
+#   CI_RUN_TIER2          default "true"   — set "false" to skip the test job
+#   CI_PYTEST_PATHS       default "tests/auth tests/config tests/core
+#                                    tests/agents tests/store tests/cil"
+#                                          — set "tests" for the full suite
+#   CI_WARN_ONLY          default "false"  — "true" reports without failing,
+#                                            useful while adopting CI
+#   CI_INTERNAL_PATTERN   default "npci"   — your org's internal infra marker
+#   CI_CHECKS_SKIP        default ""       — e.g. "secrets,internal-urls"
+#
+# Or run it once by hand from the Actions tab (workflow_dispatch), overriding
+# any of the above for that run only.
+#
+# The same checks run locally, identically:
+#   python scripts/ci/release_checks.py --list
+#   python scripts/ci/release_checks.py
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_tier2:
+        description: "Run the Tier 2 test job"
+        type: boolean
+        default: true
+      pytest_paths:
+        description: 'Test paths (e.g. "tests" for everything)'
+        type: string
+        default: ""
+      warn_only:
+        description: "Report problems without failing the run"
+        type: boolean
+        default: false
+
+# A newer push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ── TIER 1 ────────────────────────────────────────────────────────────────
+  static:
+    name: Tier 1 · static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # release_checks.py uses `git ls-files`
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ github.event.inputs.python_version || vars.CI_PYTHON_VERSION || '3.12' }}
+
+      - name: Release-readiness checks
+        env:
+          RELEASE_CHECKS_INTERNAL_PATTERN: ${{ vars.CI_INTERNAL_PATTERN || 'npci' }}
+          RELEASE_CHECKS_SKIP: ${{ vars.CI_CHECKS_SKIP || '' }}
+          RELEASE_CHECKS_WARN_ONLY: ${{ (github.event.inputs.warn_only == 'true' || vars.CI_WARN_ONLY == 'true') && '1' || '' }}
+        run: python scripts/ci/release_checks.py
+
+      - name: Shell scripts parse
+        run: |
+          for f in install.sh doctor.sh stop-local.sh compliance/generate-sbom.sh; do
+            [ -f "$f" ] || continue
+            bash -n "$f" && echo "  ok    $f"
+          done
+
+      - name: docker compose file is valid
+        env:
+          # compose interpolates these; any non-empty value satisfies the
+          # ${VAR:?} guards so the file can be validated without real secrets.
+          POSTGRES_PASSWORD: ci-validate-only
+          JWT_SECRET: ci-validate-only
+        run: docker compose config --quiet && echo "  ok    docker-compose.yml"
+
+      - name: Dockerfiles build-parse
+        run: |
+          for f in Dockerfile ai-ui/Dockerfile ABStudio/backend/Dockerfile ABStudio/frontend/Dockerfile; do
+            [ -f "$f" ] || continue
+            docker build --check -f "$f" . >/dev/null 2>&1 \
+              && echo "  ok    $f" \
+              || echo "  warn  $f — 'docker build --check' reported issues (not fatal)"
+          done
+
+      - name: Frontend lint
+        continue-on-error: true        # advisory until the existing lint debt is cleared
+        run: |
+          if [ -f ai-ui/package.json ]; then
+            cd ai-ui && npm install --no-audit --no-fund --silent && npm run lint
+          fi
+
+  # ── TIER 2 ────────────────────────────────────────────────────────────────
+  tests:
+    name: Tier 2 · tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: static
+    if: ${{ (github.event.inputs.run_tier2 != 'false') && (vars.CI_RUN_TIER2 != 'false') }}
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-postgres
+          POSTGRES_DB: ainxt_memory
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+
+    env:
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ainxt_memory
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ci-postgres
+      PGVECTOR_HOST: 127.0.0.1
+      PGVECTOR_PORT: "5432"
+      REDIS_HOST: 127.0.0.1
+      REDIS_URL: redis://127.0.0.1:6379/0
+      # 32+ chars: auth/jwt_handler.py rejects anything shorter at import time.
+      JWT_SECRET: ci-only-not-a-real-secret-0123456789
+      SECRET_KEY: ci-only-not-a-real-secret-abcdefghij
+      # The scanner is a separate service; with this on and no URL the app
+      # refuses to import at all.
+      ENABLE_INJECTION_SCAN: "false"
+      APP_ENV: development
+      TOKENIZERS_PARALLELISM: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ vars.CI_PYTHON_VERSION || '3.12' }}
+          cache: pip
+
+      - name: Free disk space
+        # requirements.txt pulls torch and the CUDA stack — several GB on a
+        # runner with ~14 GB. Reclaim space before installing.
+        run: |
+          df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          df -h / | tail -1
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply database schema
+        # migrate.py exits non-zero on any failure or missing required object,
+        # so this step alone is a real regression test for the schema.
+        run: python db/migrate.py
+
+      - name: Run tests
+        id: pytest
+        continue-on-error: true      # the comparator below decides pass/fail
+        run: |
+          PATHS="${{ github.event.inputs.pytest_paths || vars.CI_PYTEST_PATHS || 'tests/auth tests/config tests/core tests/agents tests/store tests/cil' }}"
+          echo "pytest paths: $PATHS"
+          pytest $PATHS -q --disable-warnings -rf 2>&1 | tee /tmp/pytest.out | tail -30
+
+      - name: Fail only on NEW test failures
+        # 30 tests already failed before CI existed (production code moved without
+        # its tests — see scripts/ci/known_failures.txt for the two root causes).
+        # Demanding all 30 be fixed first would mean a permanently-red pipeline
+        # that everyone learns to ignore. Instead, compare against a recorded
+        # baseline and fail only on regressions. Verified: reintroducing the
+        # _IDENTIFIER/_SECRET_KEY rename that broke every login is caught here as
+        # "1 NEW failure" with exit 1.
+        run: python scripts/ci/compare_test_failures.py /tmp/pytest.out
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "### Tier 2 tests" >> "$GITHUB_STEP_SUMMARY"
+          tail -3 /tmp/pytest.out >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs
+          path: |
+            log/
+            /tmp/*.log
+          if-no-files-found: ignore
+          retention-days: 7

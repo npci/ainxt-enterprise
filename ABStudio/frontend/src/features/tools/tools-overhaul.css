@@ -1,0 +1,787 @@
+/* ════════════════════════════════════════════════════════════════════
+   Tools Dashboard — UI Overhaul
+   Authoritative layer (loaded after light-theme.css).
+   Brings refined typography, hierarchy, service iconography
+   and tighter card design to the Build Studio Tools page.
+   ════════════════════════════════════════════════════════════════════ */
+
+.tools-dashboard {
+  max-width: 1320px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 32px 40px 64px;
+  color: #0f172a;
+  font-family: var(--font-family-base);
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.tools-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 26px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #e7ecf3;
+}
+
+.tools-header-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6366f1;
+}
+
+.tools-header-eyebrow::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.tools-dashboard .tools-title {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.08;
+  font-weight: 720;
+  letter-spacing: -0.02em;
+  color: #0b1220;
+}
+
+.tools-dashboard .tools-subtitle {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #64748b;
+  font-weight: 450;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tools-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.tools-stat-chip strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* ── Search bar ─────────────────────────────────────────────────── */
+.tools-dashboard .tools-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  margin-bottom: 28px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tools-dashboard .tools-search-bar:focus-within {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+.tools-dashboard .tools-search-bar svg {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.tools-dashboard .tools-search-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  font-weight: 450;
+  color: #0f172a;
+  font-family: var(--font-family-base);
+}
+
+.tools-dashboard .tools-search-input::placeholder {
+  color: #94a3b8;
+  font-weight: 450;
+}
+
+.tools-search-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+/* ── Group ──────────────────────────────────────────────────────── */
+.tools-dashboard .tools-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tools-dashboard .tools-group {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.tools-dashboard .tools-group-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef2f7;
+  /* Always stretch to fill the available column width,
+     even when the cards grid below is hidden (collapsed). */
+  width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
+  align-self: stretch;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  cursor: pointer;
+  text-align: left;
+  transition: opacity 0.15s;
+}
+
+.tools-dashboard .tools-group-header:hover {
+  opacity: 0.8;
+}
+
+.tools-dashboard .tools-group--collapsed .tools-group-header {
+  margin-bottom: 0;
+  border-bottom-color: #eef2f7;
+}
+
+.tools-dashboard .tools-group-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+
+.tools-dashboard .tools-group-chevron--collapsed {
+  transform: rotate(-90deg);
+}
+
+.tools-group-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.tools-group-icon[data-service="gitlab"] {
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
+.tools-group-icon[data-service="github"] {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.tools-group-icon[data-service="slack"] {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+.tools-group-icon[data-service="jira"] {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.tools-group-icon[data-service="notion"] {
+  background: linear-gradient(135deg, #f5f5f4, #e7e5e4);
+  color: #1c1917;
+  border-color: #d6d3d1;
+}
+
+.tools-group-icon[data-service="linear"] {
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  color: #6d28d9;
+  border-color: #c4b5fd;
+}
+
+.tools-group-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tools-dashboard .tools-group-label {
+  font-size: 17px;
+  font-weight: 680;
+  color: #0b1220;
+  letter-spacing: -0.005em;
+  text-transform: none;
+}
+
+.tools-group-sublabel {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.tools-dashboard .tools-group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Cards grid ─────────────────────────────────────────────────── */
+.tools-dashboard .tools-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.tools-dashboard .tool-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 148px;
+  padding: 18px 18px 16px;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #e6ebf3;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 180ms ease,
+    box-shadow 220ms ease,
+    background 180ms ease;
+}
+
+.tools-dashboard .tool-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), transparent 55%);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.tools-dashboard .tool-card:hover {
+  transform: translateY(-2px);
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 0 18px 38px -10px rgba(79, 70, 229, 0.18);
+  background: #ffffff;
+}
+
+.tools-dashboard .tool-card:hover::before {
+  opacity: 1;
+}
+
+.tools-dashboard .tool-card:focus-visible {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.tool-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.tool-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  border: 1px solid #c7d2fe;
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.tool-card-icon[data-service="gitlab"] {
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
+.tool-card-icon[data-service="github"] {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.tool-card-icon[data-service="slack"] {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+.tool-card-icon[data-service="jira"] {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.tool-card-icon[data-service="notion"] {
+  background: linear-gradient(135deg, #f5f5f4, #e7e5e4);
+  color: #1c1917;
+  border-color: #d6d3d1;
+}
+
+.tool-card-icon[data-service="linear"] {
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  color: #6d28d9;
+  border-color: #c4b5fd;
+}
+
+.tools-dashboard .tool-card-name {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.35;
+  font-weight: 680;
+  color: #0b1220;
+  font-family: var(--font-family-mono);
+  letter-spacing: -0.01em;
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.tools-dashboard .tool-card-desc {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #475569;
+  font-weight: 430;
+  font-family: var(--font-family-base);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+.tool-card-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed #eef2f7;
+}
+
+.tools-dashboard .tool-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: #475569;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.tool-card-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.tool-card-badge[data-service="gitlab"] .tool-card-badge-dot { background: #f97316; }
+.tool-card-badge[data-service="github"] .tool-card-badge-dot { background: #0f172a; }
+.tool-card-badge[data-service="slack"] .tool-card-badge-dot { background: #f59e0b; }
+.tool-card-badge[data-service="jira"] .tool-card-badge-dot { background: #2563eb; }
+.tool-card-badge[data-service="notion"] .tool-card-badge-dot { background: #1c1917; }
+.tool-card-badge[data-service="linear"] .tool-card-badge-dot { background: #7c3aed; }
+
+.tool-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: #94a3b8;
+  letter-spacing: 0;
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.tools-dashboard .tool-card:hover .tool-card-cta {
+  color: #4f46e5;
+  transform: translateX(2px);
+}
+
+.tool-card-cta svg {
+  transition: transform 180ms ease;
+}
+
+.tools-dashboard .tool-card:hover .tool-card-cta svg {
+  transform: translateX(2px);
+}
+
+/* ── Empty & loading states ─────────────────────────────────────── */
+.tools-dashboard .tools-loading,
+.tools-dashboard .tools-empty {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed #dbe3ee;
+  border-radius: 16px;
+  background: #fafbfd;
+  color: #64748b;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 32px;
+  text-align: center;
+}
+
+.tools-empty-title {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Tool detail modal — fully self-contained centered modal.
+   Uses .tm-* namespace so it doesn't depend on any other feature's CSS.
+   ════════════════════════════════════════════════════════════════════ */
+
+.tm-overlay {
+  /* Anchored to the dashboard scroll container at the user's current scrollTop
+     (set inline by React) so the modal always lands in the visible viewport,
+     regardless of where the user has scrolled to. Uses absolute (not fixed)
+     because Build Studio's embedding host applies transforms that break fixed
+     positioning. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* top + height are set inline from React */
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  overscroll-behavior: contain;
+  opacity: 1;
+}
+
+.tm-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 820px;
+  min-height: 200px;
+  /* max-height is 100% of the overlay (which is sized to the visible scroll
+     container at open time), minus the 24px overlay padding × 2, so the
+     modal never overflows the viewport region — full content remains
+     reachable via the inner body scroll. */
+  max-height: calc(100% - 48px);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+  opacity: 1;
+  transform: none;
+  z-index: 1;
+}
+
+.tm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5eaf2;
+  flex-shrink: 0;
+}
+
+.tm-heading {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.tm-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tm-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 720;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  font-family: var(--font-family-mono);
+  word-break: break-word;
+}
+
+.tm-service-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  color: #475569;
+  font-family: var(--font-family-base);
+}
+
+.tm-service-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.tm-service-chip[data-service="gitlab"] .tm-service-dot { background: #f97316; }
+.tm-service-chip[data-service="github"] .tm-service-dot { background: #0f172a; }
+.tm-service-chip[data-service="slack"]  .tm-service-dot { background: #f59e0b; }
+.tm-service-chip[data-service="jira"]   .tm-service-dot { background: #2563eb; }
+.tm-service-chip[data-service="notion"] .tm-service-dot { background: #1c1917; }
+.tm-service-chip[data-service="linear"] .tm-service-dot { background: #7c3aed; }
+
+.tm-description {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 13.5px;
+  line-height: 1.55;
+  font-weight: 440;
+}
+
+.tm-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.tm-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.tm-body {
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 18px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.tm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tm-section-title {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #475569;
+  font-family: var(--font-family-base);
+}
+
+.tm-table-wrap {
+  border: 1px solid #e5eaf2;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.tm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: var(--font-family-base);
+}
+
+.tm-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 650;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e5eaf2;
+}
+
+.tm-table td {
+  padding: 10px 14px;
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+  line-height: 1.55;
+}
+
+.tm-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.tm-table td code {
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  padding: 2px 7px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  color: #3730a3;
+}
+
+.tm-code {
+  margin: 0;
+  padding: 14px 16px;
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid #e5eaf2;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre;
+  word-break: normal;
+}
+
+@media (max-width: 720px) {
+  .tm-overlay { padding: 12px; }
+  .tm-modal { max-height: 92vh; border-radius: 14px; }
+  .tm-header { padding: 16px 18px 12px; }
+  .tm-body { padding: 14px 18px 20px; }
+  .tm-title { font-size: 16px; }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .tools-dashboard {
+    padding: 28px 28px 56px;
+  }
+  .tools-dashboard .tools-cards {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .tools-dashboard {
+    padding: 22px 16px 48px;
+  }
+  .tools-dashboard .tools-title {
+    font-size: 26px;
+  }
+  .tools-dashboard .tools-cards {
+    grid-template-columns: 1fr;
+  }
+  .tools-search-kbd { display: none; }
+}

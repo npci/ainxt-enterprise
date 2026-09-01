@@ -1,0 +1,59 @@
+AiNxt — Monthly Usage Statement
+Billing Period: {{ billing_period_label }}
+=====================================================
+
+ACCOUNT SUMMARY
+---------------
+User           : {{ user.name }}
+Employee ID    : {{ user.employee_id or "-" }}
+Department     : {{ user.department or "-" }}
+AD Level/Role  : {{ user.ad_level }} / {{ user.role }}
+Budget Tier    : {{ summary.budget_tier }}
+
+Monthly Budget : ${{ "%.2f"|format(summary.monthly_budget) }}
+Spent          : ${{ "%.2f"|format(summary.total_cost) }}
+Remaining      : ${{ "%.2f"|format(summary.remaining) }}
+Utilization    : {{ "%.1f"|format(summary.utilization_pct) }}%
+
+Total Requests : {{ summary.total_requests }}
+Input Tokens   : {{ summary.input_tokens }}
+Output Tokens  : {{ summary.output_tokens }}
+Total Tokens   : {{ summary.total_tokens }}
+
+
+DAY-WISE USAGE
+--------------
+Date         Requests   Input    Output   Total    Cost($)
+{% for row in daily -%}
+{{ row.date }}  {{ "%-9s"|format(row.requests) }} {{ "%-8s"|format(row.input_tokens) }} {{ "%-8s"|format(row.output_tokens) }} {{ "%-8s"|format(row.total_tokens) }} {{ "%.4f"|format(row.cost) }}
+{% endfor %}
+TOTAL        {{ summary.total_requests }}  {{ summary.input_tokens }}  {{ summary.output_tokens }}  {{ summary.total_tokens }}  {{ "%.4f"|format(summary.total_cost) }}
+
+
+MODEL-WISE USAGE
+----------------
+{% if models -%}
+Model                       Requests   Total Tokens   Cost($)   % Cost
+{% for m in models -%}
+{{ "%-26s"|format(m.display_name[:26]) }}  {{ "%-9s"|format(m.requests) }} {{ "%-12s"|format(m.total_tokens) }} {{ "%-9.4f"|format(m.cost) }} {{ "%.1f"|format(m.pct) }}%
+{% endfor -%}
+{% else -%}
+No model usage recorded.
+{% endif %}
+
+CHANNEL-WISE USAGE
+------------------
+{% if channels -%}
+Channel             Requests   Total Tokens   Cost($)   % Cost
+{% for c in channels -%}
+{{ "%-18s"|format(c.display_name[:18]) }}  {{ "%-9s"|format(c.requests) }} {{ "%-12s"|format(c.total_tokens) }} {{ "%-9.4f"|format(c.cost) }} {{ "%.1f"|format(c.pct) }}%
+{% endfor -%}
+{% else -%}
+No channel data captured.
+{% endif %}
+
+-----------------------------------------------------
+This is an auto-generated statement.
+For queries, contact your AiNxt administrator.
+You can opt out from your AiNxt profile settings.
+© {{ billing_year }} AiNxt Platform

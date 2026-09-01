@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AiNxt</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-model">
+        <select id="header-model-select" class="header-model-select" disabled aria-label="Active model">
+          <option value="">— No model —</option>
+        </select>
+      </div>
+      <div class="header-actions">
+        <button id="theme-toggle" class="icon-btn ghost" type="button" data-tooltip="Switch to dark mode" aria-label="Switch to dark mode">
+          <svg class="icon-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="icon-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+        </button>
+        <button id="new-session" class="icon-btn ghost" type="button" data-tooltip="New chat" aria-label="New chat" hidden>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <div class="overflow-wrap">
+          <button id="overflow-toggle" class="icon-btn ghost" type="button" data-tooltip="Menu" aria-label="Menu" aria-haspopup="true" aria-expanded="false">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" aria-hidden="true">
+              <circle cx="12" cy="5" r="1.6" fill="currentColor"/>
+              <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
+              <circle cx="12" cy="19" r="1.6" fill="currentColor"/>
+            </svg>
+          </button>
+          <div id="overflow-menu" class="overflow-menu" role="menu" aria-label="More options" hidden>
+            <button id="help-toggle" class="overflow-item" type="button" role="menuitem" aria-label="Information">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.5 1-1.5 1.9"/>
+                <circle cx="12" cy="17" r="0.6" fill="currentColor"/>
+              </svg>
+              <span class="overflow-item-label">Information</span>
+            </button>
+            <button id="schedules-toggle" class="overflow-item" type="button" role="menuitem" aria-label="Scheduled prompts">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4.5" width="18" height="16" rx="2"/>
+                <path d="M3 9h18M8 3v3M16 3v3"/>
+              </svg>
+              <span class="overflow-item-label">Scheduled prompts</span>
+            </button>
+            <button id="history-toggle" class="overflow-item" type="button" role="menuitem" aria-label="Run history">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3 3"/>
+              </svg>
+              <span class="overflow-item-label">Run history</span>
+            </button>
+            <button id="settings-toggle" class="overflow-item" type="button" role="menuitem" aria-label="Settings">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.16.34.26.7.31 1.07.04.3.06.6.06.93s-.02.63-.06.93c-.05.37-.15.73-.31 1.07z"></path>
+              </svg>
+              <span class="overflow-item-label">Settings</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section id="settings" class="card" hidden>
+      <!-- MENU view: pick a category -->
+      <div id="settings-menu" class="settings-menu">
+        <button class="settings-cat-item" type="button" data-cat="connection">
+          <span class="settings-cat-text">
+            <span class="settings-cat-title">Connection</span>
+            <span class="settings-cat-sub">Endpoint, API key, model, fallback</span>
+          </span>
+          <svg class="settings-cat-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <button class="settings-cat-item" type="button" data-cat="agent">
+          <span class="settings-cat-text">
+            <span class="settings-cat-title">Agent behavior</span>
+            <span class="settings-cat-sub">Loop, vision, approvals, step budget</span>
+          </span>
+          <svg class="settings-cat-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <button class="settings-cat-item" type="button" data-cat="sites">
+          <span class="settings-cat-text">
+            <span class="settings-cat-title">Sites &amp; Tabs</span>
+            <span class="settings-cat-sub">Tab sharing, permissions, site memory</span>
+          </span>
+          <svg class="settings-cat-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <button class="settings-cat-item" type="button" data-cat="data">
+          <span class="settings-cat-text">
+            <span class="settings-cat-title">Data &amp; Secrets</span>
+            <span class="settings-cat-sub">Secrets, saved prompts, backup &amp; restore</span>
+          </span>
+          <svg class="settings-cat-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <button class="settings-cat-item" type="button" data-cat="debug">
+          <span class="settings-cat-text">
+            <span class="settings-cat-title">Debug</span>
+            <span class="settings-cat-sub">QA Debug Mode</span>
+          </span>
+          <svg class="settings-cat-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <!-- DETAIL: Connection -->
+      <div class="settings-cat" id="settings-cat-connection" hidden>
+        <button class="settings-back" type="button" data-cat="menu">‹ Settings</button>
+        <div class="section-head">
+          <h2>LLM connection</h2>
+          <span class="muted">Stored locally · synced to your Chrome profile</span>
+        </div>
+        <p class="hint">
+          Any OpenAI-compatible endpoint works (OpenAI, Azure, OpenRouter, Ollama,
+          LM Studio, vLLM). Enter the base URL and key, click <b>Load models</b>,
+          then pick one and save.
+        </p>
+
+        <label class="field">
+          <span>Base URL</span>
+          <input id="cfg-base-url" type="text" placeholder="https://api.openai.com/v1" />
+        </label>
+        <label class="field">
+          <span>API key</span>
+          <input id="cfg-api-key" type="password" placeholder="sk-..." />
+        </label>
+
+        <div class="inline-row">
+          <button id="cfg-load-models" class="btn-secondary" type="button">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+            Load models
+          </button>
+          <span id="cfg-models-status" class="status-text"></span>
+        </div>
+
+        <label class="field">
+          <span>Model</span>
+          <select id="cfg-model" disabled>
+            <option value="">— Click "Load models" first —</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Custom model id <em class="muted">(optional)</em></span>
+          <input id="cfg-model-custom" type="text" placeholder="overrides the dropdown" />
+        </label>
+
+        <div class="section-head">
+          <h2>Fallback endpoint <em class="muted">(optional)</em></h2>
+          <span class="muted">used only if the primary endpoint fails</span>
+        </div>
+        <p class="hint">
+          If the primary connection is unreachable or returns a server error, the
+          agent retries here before giving up. Leave blank to disable.
+        </p>
+        <label class="field">
+          <span>Fallback base URL</span>
+          <input id="cfg-fallback-base-url" type="text" placeholder="https://..." />
+        </label>
+        <label class="field">
+          <span>Fallback API key</span>
+          <input id="cfg-fallback-api-key" type="password" placeholder="sk-..." />
+        </label>
+        <label class="field">
+          <span>Fallback model</span>
+          <input id="cfg-fallback-model" type="text" placeholder="defaults to primary model" />
+        </label>
+      </div>
+
+      <!-- DETAIL: Agent behavior -->
+      <div class="settings-cat" id="settings-cat-agent" hidden>
+        <button class="settings-back" type="button" data-cat="menu">‹ Settings</button>
+        <div class="section-head">
+          <h2>Agent behavior</h2>
+        </div>
+        <p class="hint">
+          These shape <i>how</i> the agent works through automation runs —
+          worth tuning to your model and how much autonomy you want.
+        </p>
+        <label class="field field-checkbox">
+          <input id="cfg-agent-loop" type="checkbox" />
+          <span>Agent loop — for automation runs, decide one action at a time against fresh page state, narrating each step (vs. planning the whole run up front)</span>
+        </label>
+        <label class="field">
+          <span>Vision — page screenshots for the agent. Requires a multimodal model (GPT-4o, Claude, Gemini); keep Off for text-only endpoints.</span>
+          <select id="cfg-vision">
+            <option value="off">Off — text snapshot only</option>
+            <option value="auto">Auto — screenshot only after a failed step, on request, or on canvas-heavy pages</option>
+            <option value="on">On — screenshot every turn</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Max steps per run — action budget for agent-loop runs (5–100)</span>
+          <input id="cfg-max-steps" type="number" min="5" max="100" step="1" value="20" />
+        </label>
+        <label class="field field-checkbox">
+          <input id="cfg-stream-narration" type="checkbox" />
+          <span>Stream narration — type out each action's reasoning token-by-token as it's generated. Off by default for compatibility with servers that don't support SSE streaming.</span>
+        </label>
+        <label class="field field-checkbox">
+          <input id="cfg-auto-approve" type="checkbox" />
+          <span>Auto-approve — skip the approval prompt and let the agent run risky steps (navigation, submits, uploads) without asking. Use with caution. Script execution and new-origin secret use always still prompt.</span>
+        </label>
+        <label class="field field-checkbox">
+          <input id="cfg-allow-exec-script" type="checkbox" />
+          <span>Allow script execution — lets exec_script steps run JavaScript in the page. Off by default; every execution still requires approval even with Auto-approve on.</span>
+        </label>
+        <label class="field field-checkbox">
+          <input id="cfg-ask-before-acting" type="checkbox" />
+          <span>Ask before acting — for automation runs, draft a plan first and let you review, edit, or have it redrafted from your feedback before approving.</span>
+        </label>
+        <label class="field field-checkbox">
+          <input id="cfg-step-by-step" type="checkbox" />
+          <span>Step-by-step — pause before every action and wait for Continue, showing what the previous step did. Full manual oversight; Auto-approve does not skip these pauses.</span>
+        </label>
+        <label class="field field-checkbox">
+          <input id="cfg-record-gif" type="checkbox" />
+          <span>Record GIF — capture a screenshot per action and offer an animated GIF of the run for download (adds a screenshot per step, capped at 60 frames).</span>
+        </label>
+      </div>
+
+      <!-- DETAIL: Sites & Tabs -->
+      <div class="settings-cat" id="settings-cat-sites" hidden>
+        <button class="settings-back" type="button" data-cat="menu">‹ Settings</button>
+        <div class="section-head">
+          <h2>Tab sharing</h2>
+        </div>
+        <p class="hint">
+          Put tabs into a tab group named <b>Assistant</b> to share them with the
+          agent. A run started from a grouped tab sees and acts on <b>only</b>
+          those tabs — and can read them together for cross-tab tasks (compare,
+          summarize, extract). Drag a tab out of the group to revoke access
+          instantly; the tab bar always shows exactly what's shared.
+        </p>
+        <div class="inline-row">
+          <button id="cfg-group-share" class="btn-secondary" type="button">Share this tab — create/reuse the Assistant group</button>
+        </div>
+        <label class="field field-checkbox">
+          <input id="cfg-group-cleanup" type="checkbox" />
+          <span>Dissolve the Assistant group when a run finishes — tabs stay open, they just leave the group. Off keeps the group for reuse across runs.</span>
+        </label>
+
+        <div class="section-head">
+          <h2>Site permissions</h2>
+        </div>
+        <p class="hint">
+          Restrict which sites the agent may act on. A host also matches its
+          subdomains (<code>google.com</code> covers <code>mail.google.com</code>).
+          Leave on “All sites” to allow everything. <b>Allowlist</b> runs only on
+          the listed hosts; <b>blocklist</b> runs everywhere except them. Blocked
+          runs are stopped before they start, and mid-run navigations to a
+          disallowed host are refused.
+        </p>
+        <label class="field">
+          <span>Policy</span>
+          <select id="cfg-site-mode">
+            <option value="off">All sites (no restriction)</option>
+            <option value="allow">Allowlist — only the hosts below</option>
+            <option value="block">Blocklist — every host except the ones below</option>
+          </select>
+        </label>
+        <textarea id="cfg-site-list" rows="3"
+          placeholder="One host per line, e.g.&#10;github.com&#10;mail.google.com"></textarea>
+
+        <div class="section-head">
+          <h2>Site memory</h2>
+        </div>
+        <p class="hint">
+          When enabled for a site, selector fixes the LLM finds during runs are
+          remembered and retried automatically on future visits — no extra LLM
+          call. Notes are shown to the planner whenever it works on that site.
+        </p>
+        <label class="field field-checkbox">
+          <input id="cfg-memory-enabled" type="checkbox" />
+          <span>Remember fixes for <b id="cfg-memory-origin">this site</b></span>
+        </label>
+        <textarea id="cfg-memory-notes" rows="2"
+          placeholder="Notes for this site, e.g. the login button is in the top-right dropdown"></textarea>
+        <ul id="cfg-memory-list" class="shortcut-manage-list"></ul>
+        <p id="cfg-memory-empty" class="hint">No sites remembered yet.</p>
+      </div>
+
+      <!-- DETAIL: Data & Secrets -->
+      <div class="settings-cat" id="settings-cat-data" hidden>
+        <button class="settings-back" type="button" data-cat="menu">‹ Settings</button>
+        <div class="section-head">
+          <h2>Secrets</h2>
+          <span class="muted">redacted in output</span>
+        </div>
+        <p class="hint">
+          Store sensitive values (passwords, tokens) once and reference them by
+          name in your steps as <code>&dollar;{secrets.password}</code>. Values are
+          substituted at execution time and never echoed back.
+        </p>
+        <textarea id="cfg-secrets" rows="4" placeholder='{ "password": "..." }'></textarea>
+        <dl>
+          <dt>1. Configure</dt>
+          <dd>
+            Enter a JSON object of name/value pairs:
+            <pre class="help-example">{
+  "username": "qa@example.com",
+  "password": "S3cr3t!"
+}</pre>
+          </dd>
+          <dt>2. Use</dt>
+          <dd>
+            Reference any key as <code>&dollar;{secrets.&lt;name&gt;}</code>. It works the
+            same in a plain-English instruction or in a test file step:
+            <pre class="help-example"># in a typed instruction
+Log in with &dollar;{secrets.username} and &dollar;{secrets.password}
+
+# in a test file step
+- action: type
+  selector: "#password"
+  value: "&dollar;{secrets.password}"</pre>
+          </dd>
+        </dl>
+
+        <div class="section-head">
+          <h2>Shortcuts</h2>
+        </div>
+        <p class="hint">
+          Saved prompts. Click <b>☆ Save</b> in the composer, give it a short
+          name, then type <b>/</b> in the composer to insert it by name (filter as
+          you type; arrow keys + Enter, or click). Remove saved prompts here.
+        </p>
+        <ul id="cfg-shortcut-list" class="shortcut-manage-list"></ul>
+        <p id="cfg-shortcut-empty" class="hint">No shortcuts saved yet.</p>
+
+        <div class="section-head">
+          <h2>Local command bridge</h2>
+        </div>
+        <p class="hint">
+          Lets a CLI or desktop app on this machine delegate a task to the browser
+          and get the run report back. Off by default. The extension never listens
+          for connections — it dials out to a helper you run yourself
+          (<code>tools/ainxt-bridge</code>), on loopback only, and only while this
+          is on. Approval gates for risky steps appear in the CLI; script execution
+          still needs Developer mode ticked here.
+        </p>
+        <label class="field field-checkbox">
+          <input id="cfg-bridge-enabled" type="checkbox" />
+          <span>Enable the local command bridge — accept delegated tasks from a helper on this machine.</span>
+        </label>
+        <label class="field">
+          <span class="field-label">Helper port</span>
+          <input id="cfg-bridge-port" type="number" min="1" max="65535" step="1" placeholder="8787" />
+        </label>
+        <label class="field">
+          <span class="field-label">Shared token</span>
+          <input id="cfg-bridge-token" type="text" readonly placeholder="Generate a token to pair the helper" />
+        </label>
+        <div class="inline-row">
+          <button id="cfg-bridge-regen" class="btn-secondary" type="button">Generate new token</button>
+          <button id="cfg-bridge-copy" class="btn-secondary" type="button">Copy token</button>
+        </div>
+        <p class="hint">
+          Start the helper with this token, then it and the browser pair automatically:
+          <code>node tools/ainxt-bridge/server.js --token &lt;token&gt;</code>.
+          The token is a credential — it is never synced to your Chrome profile and
+          never included in an export.
+        </p>
+        <p id="cfg-bridge-status" class="hint">Status: off</p>
+
+        <div class="section-head">
+          <h2>Backup &amp; restore</h2>
+        </div>
+        <p class="hint">
+          Settings, shortcuts, and site memory are mirrored to your Chrome profile
+          and restored automatically after a reinstall — when you're signed into
+          Chrome with extension sync on. Your API key and secrets vault are
+          never included in that automatic sync; Export below is the only way
+          to back them up, and it writes them as plaintext to a local file.
+        </p>
+        <label class="field field-checkbox">
+          <input id="cfg-export-secrets" type="checkbox" checked />
+          <span>Include secrets in export — API keys and the secrets vault, in plaintext. Uncheck to share a backup safely.</span>
+        </label>
+        <div class="inline-row">
+          <button id="cfg-export" class="btn-secondary" type="button">Export backup</button>
+          <button id="cfg-import" class="btn-secondary" type="button">Import backup</button>
+          <input id="cfg-import-file" type="file" accept=".json,application/json" hidden />
+        </div>
+      </div>
+
+      <!-- DETAIL: Debug -->
+      <div class="settings-cat" id="settings-cat-debug" hidden>
+        <button class="settings-back" type="button" data-cat="menu">‹ Settings</button>
+        <div class="section-head">
+          <h2>Debug</h2>
+        </div>
+        <label class="field field-checkbox">
+          <input id="cfg-qa-debug" type="checkbox" />
+          <span>QA Debug Mode — capture console &amp; network on failures and get LLM root cause analysis</span>
+        </label>
+        <dl>
+          <dt>QA Debug Mode</dt>
+          <dd>Captures console &amp; network on failures and runs LLM root-cause analysis. Turn it on when reproducing flaky failures.</dd>
+        </dl>
+      </div>
+
+      <div class="actions-row" id="settings-actions" hidden>
+        <button id="cfg-save" class="btn-secondary" type="button">Save</button>
+        <button id="cfg-save-close" type="button">Save &amp; Home</button>
+      </div>
+    </section>
+
+    <section id="help" class="card help-card" hidden>
+      <div class="section-head">
+        <h2>Modes</h2>
+        <span class="muted">pick one in the composer</span>
+      </div>
+      <p class="hint">
+        The mode dropdown next to the message box controls how AiNxt handles your
+        request. Start with <b>auto</b> and switch only when you want explicit control.
+      </p>
+      <dl>
+        <dt><code>auto</code></dt>
+        <dd>Handles everything: clear questions are answered in chat, and page work is planned and run from your plain-English instruction. Risky steps (purchases, deletions, submits) automatically pause for your approval.</dd>
+        <dt><code>test</code></dt>
+        <dd>Runs a structured JSON/YAML test file — attach one with the + button or record one with ●.</dd>
+        <dt><code>ask</code></dt>
+        <dd>Chat with the AI without touching the page.</dd>
+        <dt><code>debug</code></dt>
+        <dd>Watches console &amp; network errors and explains the root cause.</dd>
+      </dl>
+
+      <div class="section-head">
+        <h2>Recording</h2>
+        <span class="muted">the ● button</span>
+      </div>
+      <p class="hint">
+        In <b>test</b> mode, click <b>●</b> in the composer, then interact with the page — clicks and typing
+        are captured (the badge counts steps). Click <b>●</b> again to stop, and the
+        recording is turned into a replayable YAML test file you can run in <b>test</b>
+        mode. If the test file already has steps, you'll be asked to append or replace.
+      </p>
+
+      <div class="section-head">
+        <h2>Scheduled prompts</h2>
+        <span class="muted">saved prompts, on a timer</span>
+      </div>
+      <p class="hint">
+        Saved prompts you can trigger with <b>/</b> in the composer, or run on a
+        schedule — <b>Once</b>, <b>Daily</b>, <b>Weekly</b>, or <b>Monthly</b> at
+        a date and time you set. Scheduled runs need this panel open at the run
+        time; if it's closed, you'll get a notification to click and run it
+        instead.
+      </p>
+
+      <div class="section-head">
+        <h2>Connection</h2>
+        <span class="muted">in Settings</span>
+      </div>
+      <p class="hint">
+        Any OpenAI-compatible endpoint works (OpenAI, Azure, OpenRouter, Ollama,
+        LM Studio, vLLM). Enter the base URL and key, click <b>Load models</b>,
+        then pick one and save. An optional fallback endpoint is retried if the
+        primary connection is unreachable or returns a server error.
+      </p>
+
+      <div class="section-head">
+        <h2>Agent behavior</h2>
+        <span class="muted">in Settings</span>
+      </div>
+      <p class="hint">
+        These shape <i>how</i> the agent works through automation runs —
+        worth tuning to your model and how much autonomy you want.
+      </p>
+      <dl>
+        <dt>Agent loop</dt>
+        <dd>Decide one action at a time against fresh page state, instead of planning the whole run up front. Best for exploring unfamiliar pages.</dd>
+        <dt>Vision</dt>
+        <dd>Attaches a page screenshot each turn so the agent can <i>see</i> the page. Needs a multimodal model (GPT-4o, Claude, Gemini).</dd>
+        <dt>Max steps per run</dt>
+        <dd>Action budget for agent-loop runs (5–100). Exhausting it ends the run with status <code>max_steps_reached</code>, not a failure.</dd>
+        <dt>Stream narration</dt>
+        <dd>Types out the agent's reasoning token-by-token. Off by default for servers that don't support SSE streaming.</dd>
+        <dt>Auto-approve</dt>
+        <dd>Skips the approval prompt and lets risky steps (navigation, submits, uploads) run unattended. Use with caution.</dd>
+        <dt>Ask before acting</dt>
+        <dd>Drafts a plan for automation runs and shows it for review before AiNxt touches the page. Edit steps inline, ask AiNxt to redraft with <b>Update plan</b>, preview targets with <b>Dry run</b>, then approve.</dd>
+        <dt>Step-by-step</dt>
+        <dd>Pauses before every action and waits for <b>Continue</b>, showing what the previous step did. Full manual oversight; Auto-approve does not skip these pauses.</dd>
+        <dt>Record GIF</dt>
+        <dd>Captures a screenshot per action and offers an animated GIF of the run for download (adds a screenshot per step, capped at 60 frames).</dd>
+      </dl>
+
+      <div class="section-head">
+        <h2>Sites &amp; Tabs</h2>
+        <span class="muted">in Settings</span>
+      </div>
+      <p class="hint">
+        Put tabs into a tab group named <b>Assistant</b> to share them with the
+        agent — a run started from a grouped tab sees and acts on only those
+        tabs. Site permissions let you allowlist or blocklist which hosts the
+        agent may act on. Site memory remembers selector fixes the LLM finds
+        during a run and retries them automatically on future visits to that
+        site, no extra LLM call needed.
+      </p>
+
+      <div class="section-head">
+        <h2>Data &amp; Secrets</h2>
+        <span class="muted">in Settings</span>
+      </div>
+      <p class="hint">
+        Store sensitive values once and reference them as
+        <code>&dollar;{secrets.&lt;name&gt;}</code> in an instruction or test file
+        step — substituted at execution time, never echoed back. Shortcuts are
+        saved prompts you insert with <b>/</b> in the composer (the same store
+        Scheduled prompts builds on). Export a JSON backup any time; settings,
+        shortcuts, and site memory otherwise sync automatically with your
+        Chrome profile.
+      </p>
+
+      <div class="section-head">
+        <h2>Debug</h2>
+        <span class="muted">in Settings</span>
+      </div>
+      <p class="hint">
+        <b>QA Debug Mode</b> captures console &amp; network activity on failures
+        and runs an LLM root-cause analysis. Turn it on when reproducing flaky
+        failures.
+      </p>
+
+      <div class="section-head">
+        <h2>While a run is going</h2>
+        <span class="muted">on the running bubble</span>
+      </div>
+      <p class="hint">
+        Each running reply has its own <b>Stop</b> button and a <b>🔔 Notify me</b>
+        toggle. Runs keep going if you switch tabs or windows, and you're notified
+        when one finishes in the background; turn on <b>Notify me</b> to get the
+        notification even while you're watching the panel. Your last choice is
+        remembered for the next run.
+      </p>
+    </section>
+
+    <section id="history-drawer" class="card history-drawer" hidden>
+      <div class="section-head">
+        <h2>Run History</h2>
+        <div class="section-head-actions">
+          <button id="history-clear-debug" class="link-btn" type="button">Clear debug history</button>
+          <button id="history-clear" class="link-btn" type="button">Clear all</button>
+        </div>
+      </div>
+      <p id="history-session" class="hint" hidden></p>
+      <ul id="history-list" class="history-list"></ul>
+      <p id="history-empty" class="history-empty" hidden>No runs recorded yet.</p>
+    </section>
+
+    <section id="schedules" class="card" hidden>
+      <div class="section-head">
+        <h2>Scheduled prompts</h2>
+        <div class="section-head-actions">
+          <button id="prompt-new" class="link-btn" type="button">+ New prompt</button>
+        </div>
+      </div>
+      <p class="hint">
+        Saved prompts you can trigger with <b>/</b> in the composer, or run on a
+        schedule. Scheduled runs need this panel open at the run time — if it's
+        closed, you'll get a notification to click and run it.
+      </p>
+      <ul id="schedules-list" class="schedules-list"></ul>
+      <p id="schedules-empty" class="hint">No saved prompts yet — click <b>+ New prompt</b>.</p>
+    </section>
+
+    <section id="prompt-editor" class="card" hidden>
+      <div class="section-head">
+        <h2 id="prompt-editor-title">New scheduled prompt</h2>
+        <span class="muted">saved locally · synced to your profile</span>
+      </div>
+
+      <label class="field">
+        <span>Name</span>
+        <div class="name-affix">
+          <span class="name-slash">/</span>
+          <input id="prompt-name" type="text" maxlength="48" placeholder="fintechnews" />
+        </div>
+      </label>
+
+      <label class="field">
+        <span>Prompt</span>
+        <textarea id="prompt-text" rows="3"
+          placeholder="get 10 new articles summary"></textarea>
+      </label>
+
+      <label class="field">
+        <span>Start from <em class="muted">(optional)</em></span>
+        <input id="prompt-url" type="text" placeholder="https://fintechmagazine.com/" />
+      </label>
+
+      <div class="field">
+        <label class="switch-row">
+          <span class="switch-label">Schedule</span>
+          <span class="switch">
+            <input id="prompt-schedule-on" type="checkbox" />
+            <span class="switch-track"><span class="switch-knob"></span></span>
+          </span>
+        </label>
+        <div id="prompt-schedule-fields" class="schedule-fields" hidden>
+          <label class="field">
+            <span>Frequency</span>
+            <select id="prompt-frequency">
+              <option value="once">Once</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+          <div class="datetime-row">
+            <label class="field">
+              <span>Date</span>
+              <input id="prompt-date" type="date" />
+            </label>
+            <label class="field time-field">
+              <span>Time</span>
+              <div class="time-row">
+                <select id="prompt-hour" aria-label="Hour"></select>
+                <span class="time-colon">:</span>
+                <select id="prompt-minute" aria-label="Minute"></select>
+                <select id="prompt-ampm" aria-label="AM or PM">
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <label class="field">
+        <span>Model</span>
+        <select id="prompt-model">
+          <option value="">— Use current model —</option>
+        </select>
+      </label>
+
+      <div class="actions-row">
+        <button id="prompt-cancel" class="btn-secondary" type="button">Cancel</button>
+        <button id="prompt-save" type="button">Save prompt</button>
+      </div>
+    </section>
+
+    <main id="thread" class="thread" aria-live="polite">
+      <div id="greeting" class="greeting">
+        <h1 class="greeting-hi"><span id="greeting-time">Hi</span>, <span id="greeting-name">there</span>.</h1>
+        <p class="greeting-sub">What would you like me to test or operate on this page?</p>
+        <div class="greeting-suggestions">
+          <span class="suggestions-label">Try asking</span>
+          <ul id="suggestion-list">
+            <li>Test the login form with valid and invalid credentials</li>
+            <li>Explore this page and summarize what it does</li>
+            <li>Watch this page for console and network errors</li>
+          </ul>
+        </div>
+        <p class="greeting-tip" id="greeting-tip"></p>
+      </div>
+    </main>
+
+    <section id="composer" class="composer-card">
+      <div id="shortcut-menu" class="shortcut-menu" role="listbox" aria-label="Saved prompt shortcuts" hidden></div>
+      <div id="shortcut-name-pop" class="shortcut-name-pop" hidden>
+        <label for="shortcut-name-input">Shortcut name</label>
+        <div class="shortcut-name-row">
+          <input id="shortcut-name-input" type="text" maxlength="48" placeholder="e.g. login-smoke-test" />
+          <button id="shortcut-name-save" type="button">Save</button>
+        </div>
+      </div>
+      <div id="image-chip" class="image-chip" hidden>
+        <img id="image-chip-thumb" alt="Attached image preview" />
+        <span id="image-chip-name"></span>
+        <button id="image-chip-remove" type="button" title="Remove image" aria-label="Remove image">×</button>
+      </div>
+      <div class="composer-row">
+        <textarea id="instruction" rows="1"
+          placeholder="Ask AiNxt to test or operate this page…"></textarea>
+        <div class="composer-controls">
+          <button id="attach-btn" class="composer-attach" type="button" hidden
+                  title="Attach test file" aria-label="Attach test file">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                 stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <button id="image-attach-btn" class="composer-attach" type="button" hidden
+                  title="Attach image (needs a vision-capable model)" aria-label="Attach image">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <path d="M21 15l-5-5L5 21"/>
+            </svg>
+          </button>
+          <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+          <span class="rec-btn-wrap" id="rec-btn-wrap" hidden>
+            <button id="record-btn" class="icon-btn ghost" type="button"
+                    title="Record interactions" aria-label="Record interactions">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="12" r="6"/>
+              </svg>
+            </button>
+            <span id="rec-count" class="rec-badge" hidden>0</span>
+          </span>
+          <select id="mode" class="mode-select" title="Run mode">
+            <option value="auto" selected>auto</option>
+            <option value="test">test</option>
+            <option value="ask">ask</option>
+            <option value="debug">debug</option>
+          </select>
+          <button id="run-btn" class="btn-send icon-only" type="button"
+                  title="Send" aria-label="Send">
+            <svg class="icon-send" viewBox="0 0 24 24" width="14" height="14" fill="none"
+                 stroke="currentColor" stroke-width="2.4" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+            <svg class="icon-stop" viewBox="0 0 24 24" width="10" height="10" fill="currentColor"
+                 aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          </button>
+        </div>
+      </div>
+      <details id="file-details" class="advanced" hidden>
+        <summary>Attached test file (JSON or YAML)</summary>
+        <input id="file-input" type="file" accept=".json,.yaml,.yml,.txt" />
+        <textarea id="file-text" rows="5"
+          placeholder="Paste a test file here, or load one above"></textarea>
+        <label class="field field-checkbox">
+          <input id="file-dry-run" type="checkbox" />
+          <span>Dry run — highlight each step's target and check selectors resolve, without executing anything</span>
+        </label>
+      </details>
+      <div class="composer-foot">
+        <div id="shortcut-strip" class="shortcut-strip">
+          <button id="shortcut-save" class="shortcut-save" type="button" hidden
+                  title="Save the current prompt as a shortcut">☆ Save</button>
+        </div>
+        <span id="active-tab-label" class="active-tab-tag">active tab</span>
+        <span id="version-label" class="version-tag" title="Extension version"></span>
+      </div>
+    </section>
+
+    <!-- Human approval gate modal -->
+    <div id="gate-modal" class="gate-modal-backdrop" hidden aria-modal="true" role="dialog" aria-labelledby="gate-modal-title">
+      <div class="gate-modal">
+        <div class="gate-header">
+          <span class="gate-badge">⏸ Awaiting Approval</span>
+          <h2 id="gate-modal-title" class="gate-title">Human Input Required</h2>
+        </div>
+        <div class="gate-body">
+          <p id="gate-reason" class="gate-reason"></p>
+          <div id="gate-next-step" class="gate-next-step" hidden>
+            <div id="gate-next-label" class="gate-next-label">Next step after approval</div>
+            <div id="gate-next-desc" class="gate-next-desc"></div>
+          </div>
+        </div>
+        <div class="gate-actions">
+          <button id="gate-cancel" class="btn-danger" type="button">Cancel run</button>
+          <button id="gate-approve" type="button">Approve &amp; continue</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

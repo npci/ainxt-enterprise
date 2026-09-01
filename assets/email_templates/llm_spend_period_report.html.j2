@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AiNxt LLM Spend — {{ report.cadence|capitalize }} Report ({{ report.label }})</title>
+</head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f2f5;padding:32px 0;">
+  <tr><td align="center">
+
+    <table role="presentation" width="720" cellpadding="0" cellspacing="0" border="0"
+           style="max-width:720px;width:100%;background:#ffffff;border-radius:12px;
+                  box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow:hidden;">
+
+      <!-- Header -->
+      <tr>
+        <td bgcolor="#1e40af" style="background-color:#1e40af;background:#1e40af;background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 50%,#2563eb 100%);padding:28px 36px;color:#ffffff;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td>
+                <div style="font-size:22px;font-weight:700;letter-spacing:.5px;">AiNxt</div>
+                <div style="font-size:12px;opacity:.75;margin-top:2px;letter-spacing:.3px;">AiNxt &middot; AI Platform</div>
+              </td>
+              <td style="text-align:right;vertical-align:top;">
+                <div style="font-size:11px;opacity:.7;">{{ generated_at }}</div>
+              </td>
+            </tr>
+          </table>
+          <div style="margin-top:18px;font-size:19px;font-weight:600;">LLM Spend &mdash; {{ report.cadence|capitalize }} Report</div>
+          <div style="margin-top:4px;font-size:13px;opacity:.85;">{{ report.label }}</div>
+        </td>
+      </tr>
+
+      <!-- Stale-data banner — shown when a provider's figures may not be settled -->
+      {% if report.stale_providers %}
+      <tr><td style="padding:18px 36px 0 36px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="background:#fffbeb;border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:8px;padding:12px 16px;">
+              <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:3px;">
+                &#9888; Some figures are still settling
+              </div>
+              <div style="font-size:12px;color:#78350f;line-height:1.5;">
+                {{ report.stale_providers | map('capitalize') | join(', ') }}
+                data for this period was not fully available when this report was generated
+                and may be revised in a later report. (Billing exports can lag several hours behind usage.)
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+      {% endif %}
+
+      <!-- Summary Cards -->
+      <tr><td style="padding:24px 36px 8px 36px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <!-- Total Spend Card -->
+            <td width="48%" style="background:#f0f7ff;border-radius:8px;padding:16px 20px;border:1px solid #dbeafe;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;font-weight:600;">Total Spend</div>
+              <div style="font-size:28px;font-weight:700;color:#1e3a8a;margin-top:4px;">${{ "%.2f"|format(report.total_cost_usd) }}</div>
+              {% if report.prev_total_usd is not none %}
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+                Previous {{ report.cadence }}: ${{ "%.2f"|format(report.prev_total_usd) }}
+                {% set diff = report.total_cost_usd - report.prev_total_usd %}
+                {% if report.prev_total_usd > 0 %}
+                  {% set pct = ((diff / report.prev_total_usd) * 100)|round(1) %}
+                  {% if diff > 0 %}
+                    <span style="color:#dc2626;font-weight:600;">&uarr; {{ pct }}%</span>
+                  {% elif diff < 0 %}
+                    <span style="color:#16a34a;font-weight:600;">&darr; {{ pct|abs }}%</span>
+                  {% else %}
+                    <span style="color:#6b7280;">&#8212; 0%</span>
+                  {% endif %}
+                {% endif %}
+              </div>
+              {% endif %}
+            </td>
+            <td width="4%"></td>
+            <!-- Users Card -->
+            <td width="48%" style="background:#f0fdf4;border-radius:8px;padding:16px 20px;border:1px solid #dcfce7;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;font-weight:600;">Active Users</div>
+              <div style="font-size:28px;font-weight:700;color:#166534;margin-top:4px;">{{ "{:,}".format(report.active_users) }}</div>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <!-- Sparkline Chart (hidden for daily cadence) -->
+      {% if sparkline_png and report.cadence != 'daily' %}
+      <tr><td style="padding:16px 36px 8px 36px;">
+        <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:8px;">Daily Spend Trend</div>
+        <div style="background:#f9fafb;border-radius:8px;padding:12px;border:1px solid #e5e7eb;">
+          <img src="data:image/png;base64,{{ sparkline_png }}" width="580" height="220" alt="Daily spend trend" style="display:block;max-width:100%;height:auto;" />
+        </div>
+      </td></tr>
+      {% endif %}
+
+      <!-- Provider Summary — cards layout -->
+      <tr><td style="padding:20px 36px 8px 36px;">
+        <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;">Provider Summary</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          {% for p in report.provider_totals %}
+          {% if loop.index0 % 3 == 0 %}<tr>{% endif %}
+            <td width="32%" style="padding:0 {{ '4px' if not loop.last else '0' }} 8px 0;vertical-align:top;">
+              <div style="background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb;">
+                <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;">
+                  {% if p.provider == 'openai' %}
+                    <span style="color:#10a37f;">&#9679;</span>
+                  {% elif p.provider == 'anthropic' %}
+                    <span style="color:#d97706;">&#9679;</span>
+                  {% elif p.provider == 'gemini' %}
+                    <span style="color:#4285f4;">&#9679;</span>
+                  {% else %}
+                    <span style="color:#6b7280;">&#9679;</span>
+                  {% endif %}
+                  {{ p.provider|capitalize }}
+                </div>
+                <div style="font-size:20px;font-weight:700;color:#1e3a8a;">${{ "{:,.2f}".format(p.cost_usd) }}</div>
+                <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.5;">
+                  Input Tokens: {{ "{:,}".format(p.input_tokens) }}<br/>
+                  Output Tokens: {{ "{:,}".format(p.output_tokens) }}
+                </div>
+              </div>
+            </td>
+            {% if not loop.last and loop.index0 % 3 != 2 %}<td width="2%"></td>{% endif %}
+          {% if loop.index0 % 3 == 2 or loop.last %}</tr>{% endif %}
+          {% endfor %}
+        </table>
+      </td></tr>
+
+      <!-- Cache Savings -->
+      {% if report.cache_savings and report.cache_savings.rows %}
+      <tr><td style="padding:20px 36px 0 36px;">
+        <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;">Prompt Cache Savings</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td width="32%" style="padding:0 4px 8px 0;vertical-align:top;">
+              <div style="background:#f0fdfa;border-radius:8px;padding:14px 16px;border:1px solid #ccfbf1;">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;font-weight:600;">Saved this {{ report.cadence }}</div>
+                <div style="font-size:22px;font-weight:700;color:#0f766e;margin-top:4px;">${{ "{:,.2f}".format(report.cache_savings.total_saved_usd) }}</div>
+                <div style="font-size:11px;color:#6b7280;margin-top:4px;">{{ report.cache_savings.total_saved_pct }}% vs. paying full rate</div>
+              </div>
+            </td>
+            <td width="4%"></td>
+            <td width="32%" style="padding:0 4px 8px 0;vertical-align:top;">
+              <div style="background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb;">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;font-weight:600;">Actually paid (cache reads)</div>
+                <div style="font-size:20px;font-weight:700;color:#1e3a8a;margin-top:4px;">${{ "{:,.2f}".format(report.cache_savings.total_cache_read_cost_usd) }}</div>
+              </div>
+            </td>
+            <td width="4%"></td>
+            <td width="32%" style="padding:0 0 8px 0;vertical-align:top;">
+              <div style="background:#f9fafb;border-radius:8px;padding:14px 16px;border:1px solid #e5e7eb;">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;font-weight:600;">Would have cost at full rate</div>
+                <div style="font-size:20px;font-weight:700;color:#6b7280;margin-top:4px;">${{ "{:,.2f}".format(report.cache_savings.total_would_cost_usd) }}</div>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <div style="border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;margin-top:4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr>
+                <th style="background:#f8fafc;padding:8px 12px;text-align:left;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;font-size:10px;text-transform:uppercase;letter-spacing:.3px;">Provider / Model</th>
+                <th style="background:#f8fafc;padding:8px 10px;text-align:right;font-weight:600;color:#374151;border-bottom:1px solid #e5e7eb;font-size:10px;text-transform:uppercase;letter-spacing:.3px;" title="Cost per 1M uncached (full-rate) input tokens">Uncached Input<br/><span style="font-weight:400;color:#9ca3af;">per 1M</span></th>
+                <th style="background:#f8fafc;padding:8px 10px;text-align:right;font-weight:600;color:#374151;border-bottom:1px solid #e5e7eb;font-size:10px;text-transform:uppercase;letter-spacing:.3px;" title="Cost per 1M output tokens">Uncached Output<br/><span style="font-weight:400;color:#9ca3af;">per 1M</span></th>
+                <th style="background:#f8fafc;padding:8px 10px;text-align:right;font-weight:600;color:#0e7490;border-bottom:1px solid #e5e7eb;font-size:10px;text-transform:uppercase;letter-spacing:.3px;" title="Actual cost per 1M cache-read (cache hit) input tokens">Cache Read<br/><span style="font-weight:400;color:#9ca3af;">per 1M</span></th>
+                <th style="background:#f8fafc;padding:8px 10px;text-align:right;font-weight:600;color:#d97706;border-bottom:1px solid #e5e7eb;font-size:10px;text-transform:uppercase;letter-spacing:.3px;" title="Cost per 1M cache-write (5-min TTL) tokens">Cache Write 5m<br/><span style="font-weight:400;color:#9ca3af;">per 1M</span></th>
+                <th style="background:#f8fafc;padding:8px 10px;text-align:right;font-weight:600;color:#92400e;border-bottom:1px solid #e5e7eb;font-size:10px;text-transform:uppercase;letter-spacing:.3px;" title="Cost per 1M cache-write (1-hour TTL) tokens">Cache Write 1h<br/><span style="font-weight:400;color:#9ca3af;">per 1M</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for csr in report.cache_savings.rows %}
+              <tr style="background:{{ 'white' if loop.index is odd else '#f9fafb' }};">
+                <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">
+                  <span style="font-size:10px;color:#6b7280;">{{ csr.provider|capitalize }}</span>
+                  &middot;
+                  <code style="font-size:11px;background:#f3f4f6;padding:2px 6px;border-radius:4px;color:#1f2937;">{{ csr.model }}</code>
+                </td>
+                <td style="padding:8px 10px;text-align:right;color:#374151;border-bottom:1px solid #f3f4f6;font-weight:600;">${{ "{:,.4f}".format(csr.uncached_rate_per_1m) }}</td>
+                <td style="padding:8px 10px;text-align:right;color:#374151;border-bottom:1px solid #f3f4f6;">
+                  {% if csr.uncached_output_rate_per_1m is not none %}
+                    ${{ "{:,.4f}".format(csr.uncached_output_rate_per_1m) }}
+                  {% else %}
+                    <span style="color:#d1d5db;">—</span>
+                  {% endif %}
+                </td>
+                <td style="padding:8px 10px;text-align:right;color:#0e7490;border-bottom:1px solid #f3f4f6;">
+                  {% if csr.cache_read_rate_per_1m is not none %}
+                    ${{ "{:,.4f}".format(csr.cache_read_rate_per_1m) }}
+                  {% else %}
+                    <span style="color:#d1d5db;">—</span>
+                  {% endif %}
+                </td>
+                <td style="padding:8px 10px;text-align:right;color:#d97706;border-bottom:1px solid #f3f4f6;">
+                  {% if csr.cache_write_5m_rate_per_1m is not none %}
+                    ${{ "{:,.4f}".format(csr.cache_write_5m_rate_per_1m) }}
+                  {% else %}
+                    <span style="color:#d1d5db;">—</span>
+                  {% endif %}
+                </td>
+                <td style="padding:8px 10px;text-align:right;color:#92400e;border-bottom:1px solid #f3f4f6;">
+                  {% if csr.cache_write_1h_rate_per_1m is not none %}
+                    ${{ "{:,.4f}".format(csr.cache_write_1h_rate_per_1m) }}
+                  {% else %}
+                    <span style="color:#d1d5db;">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="font-size:11px;color:#9ca3af;font-style:italic;line-height:1.5;margin-top:6px;">
+          All rates are derived from actual billed amounts for this period (cost ÷ tokens × 1M). <strong style="font-style:normal;color:#6b7280;">Uncached Input</strong> is the full-rate input price used to compute savings above. <strong style="font-style:normal;color:#0e7490;">Cache Read</strong> is what was actually paid per 1M cache-hit tokens. <strong style="font-style:normal;color:#d97706;">Cache Write</strong> rates are the cost to write tokens into the prompt cache (5-min and 1-hour TTL variants). A dash (—) means that token type had no activity this period. Cache-read token counts are shown in the Model Breakdown chart below.
+          {% if report.cache_savings.covered_providers %}
+          Covers: {{ report.cache_savings.covered_providers | map('capitalize') | join(', ') }} only.
+          {% endif %}
+          {% if report.cache_savings.excluded_providers %}
+          Excluded (no per-token breakdown available yet): {{ report.cache_savings.excluded_providers | map('capitalize') | join(', ') }} &mdash; not reflected in the figures above.
+          {% endif %}
+        </div>
+      </td></tr>
+      {% endif %}
+
+      <!-- Model Breakdown — one stacked-bar chart per provider. Each bar is
+           a model, segmented by token_type, with an explicit cost + token
+           count line per token_type underneath. This chart is now the sole
+           presentation of the model breakdown (the old per-provider table
+           was removed — every number it showed is itemised in the chart). -->
+      {% if model_breakdown_charts %}
+      <tr><td style="padding:20px 36px 4px 36px;">
+        <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;">Model Breakdown</div>
+      </td></tr>
+      {% for provider, chart_png in model_breakdown_charts %}
+      <tr><td style="padding:0 36px {{ '8px' if not loop.last else '4px' }} 36px;">
+        <div style="background:#f9fafb;border-radius:8px;padding:14px;border:1px solid #e5e7eb;">
+          <img src="data:image/png;base64,{{ chart_png }}" width="648" alt="{{ provider|capitalize }} spend by model" style="display:block;width:100%;max-width:648px;height:auto;" />
+        </div>
+      </td></tr>
+      {% endfor %}
+      {% endif %}
+
+      <!-- "other" / "blended" footnotes -->
+      <tr><td style="padding:8px 36px 4px 36px;">
+        <div style="font-size:11px;color:#9ca3af;font-style:italic;line-height:1.5;">
+          * &ldquo;other&rdquo; includes non-model charges such as image generation and TTS.<br/>
+          * &ldquo;Blended&rdquo; rows are not yet broken down by token type for that provider &mdash; the cost/token figures shown are the full blended totals for that model, not one token class.
+        </div>
+      </td></tr>
+
+      <!-- Discount note -->
+      {% if report.discount_note %}
+      <tr><td style="padding:12px 36px 0 36px;">
+        <div style="font-size:11px;color:#6b7280;font-style:italic;line-height:1.5;background:#f9fafb;border-radius:6px;padding:10px 14px;border:1px solid #e5e7eb;">
+          &#8505; {{ report.discount_note }}
+        </div>
+      </td></tr>
+      {% endif %}
+
+      <!-- Footer -->
+      <tr><td style="padding:20px 36px 28px 36px;border-top:1px solid #e5e7eb;margin-top:12px;">
+        <div style="font-size:11px;color:#9ca3af;line-height:1.6;">
+          Generated by AiNxt &middot; AI Platform<br />
+          This is an automated report &mdash; do not reply to this email.
+        </div>
+      </td></tr>
+
+    </table>
+
+  </td></tr>
+</table>
+
+</body>
+</html>

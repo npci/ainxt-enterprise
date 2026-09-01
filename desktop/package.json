@@ -1,0 +1,145 @@
+{
+  "name": "ainxt-desktop",
+  "version": "1.0.0",
+  "description": "AiNxt Desktop — AI-powered engineering assistant for AiNxt",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "AINXT_DEV=1 electron .",
+    "build:mac": "electron-builder --mac --arm64 --x64",
+    "build:win": "electron-builder --win --x64",
+    "build:all": "electron-builder --mac --win --x64",
+    "pack": "electron-builder --dir",
+    "brand:dev": "bash scripts/brand-electron-dev.sh",
+    "postinstall": "node -e \"if(process.platform!=='win32')require('child_process').execSync('bash scripts/brand-electron-dev.sh',{stdio:'inherit'});\""
+  },
+  "build": {
+    "appId": "com.ainxt.ainxt",
+    "productName": "AiNxt",
+    "copyright": "Copyright © 2026 AiNxt",
+    "publish": null,
+    "electronDownload": {
+      "unsafelyDisableChecksums": true
+    },
+    "files": [
+      "src/**/*",
+      "build/**/*",
+      "node_modules/read-excel-file/**/*",
+      "node_modules/jszip/**/*",
+      "node_modules/mammoth/**/*",
+      "node_modules/pdf-parse/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "resources/bin",
+          "to": "bin",
+          "filter": [
+            "ainxt-macos-*"
+          ]
+        },
+        {
+          "from": "resources/code-skills",
+          "to": "code-skills"
+        }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "resources/bin",
+          "to": "bin",
+          "filter": [
+            "ainxt-windows-x64.exe"
+          ]
+        },
+        {
+          "from": "resources/code-skills",
+          "to": "code-skills"
+        }
+      ],
+      "extraFiles": [
+        {
+          "from": "resources/ainxt-desktop.bat",
+          "to": "ainxt-desktop.bat"
+        }
+      ]
+    },
+    "linux": {
+      "icon": "build/icons",
+      "target": [
+        {
+          "target": "AppImage"
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "resources/bin",
+          "to": "bin",
+          "filter": [
+            "ainxt-linux-x64"
+          ]
+        },
+        {
+          "from": "resources/code-skills",
+          "to": "code-skills"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "extraMetadata": {
+      "main": "src/main.js"
+    },
+    "asarUnpack": [
+      "node_modules/read-excel-file/**/*",
+      "node_modules/pdf-parse/**/*",
+      "node_modules/mammoth/**/*",
+      "node_modules/jszip/**/*"
+    ]
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.0",
+    "electron-store": "^8.2.0",
+    "jimp": "^0.22.12",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.11.0",
+    "playwright": "^1.60.0",
+    "read-excel-file": "^9.3.5"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
+    "electron": "^41.10.6",
+    "electron-builder": "^26.8.1"
+  },
+  "license": "Apache-2.0"
+}

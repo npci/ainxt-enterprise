@@ -1,0 +1,182 @@
+{
+  "current": {
+    "strategy": "current",
+    "n_probes": 8,
+    "omission_rate": 0.0,
+    "staleness_rate": 0.0,
+    "hallucination_risk": 0.0,
+    "avg_tokens": 53717.0,
+    "results": [
+      {
+        "case": "recall_short",
+        "kind": "recall",
+        "question": "What is my budget?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "recall_short",
+        "kind": "recall",
+        "question": "What region?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "override_short",
+        "kind": "override",
+        "question": "What is my current budget?",
+        "fresh_present": true,
+        "stale_present": true,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "distractor_short",
+        "kind": "distractor",
+        "question": "How often do we rotate keys?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "longctx_recall",
+        "kind": "longctx",
+        "question": "What is the license key?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "longctx_override",
+        "kind": "override",
+        "question": "Who is the primary contact?",
+        "fresh_present": true,
+        "stale_present": true,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "overflow_summary_recall",
+        "kind": "longctx",
+        "question": "What is my order id?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "overflow_buried_fact",
+        "kind": "longctx",
+        "question": "What is the rotation code?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      }
+    ]
+  },
+  "c1": {
+    "strategy": "c1",
+    "n_probes": 8,
+    "omission_rate": 0.0,
+    "staleness_rate": 0.0,
+    "hallucination_risk": 0.0,
+    "avg_tokens": 53717.0,
+    "results": [
+      {
+        "case": "recall_short",
+        "kind": "recall",
+        "question": "What is my budget?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "recall_short",
+        "kind": "recall",
+        "question": "What region?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "override_short",
+        "kind": "override",
+        "question": "What is my current budget?",
+        "fresh_present": true,
+        "stale_present": true,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "distractor_short",
+        "kind": "distractor",
+        "question": "How often do we rotate keys?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "longctx_recall",
+        "kind": "longctx",
+        "question": "What is the license key?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "longctx_override",
+        "kind": "override",
+        "question": "Who is the primary contact?",
+        "fresh_present": true,
+        "stale_present": true,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "overflow_summary_recall",
+        "kind": "longctx",
+        "question": "What is my order id?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      },
+      {
+        "case": "overflow_buried_fact",
+        "kind": "longctx",
+        "question": "What is the rotation code?",
+        "fresh_present": true,
+        "stale_present": false,
+        "omitted": false,
+        "stale_win": false,
+        "ungrounded": false
+      }
+    ]
+  }
+}
