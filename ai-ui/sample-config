@@ -1,0 +1,26 @@
+VITE_ENABLE_PRESENTON=true
+
+
+
+VITE_PRESENTON_BASE=/presenton
+
+
+VITE_PRESENTON_TIMEOUT=600000
+VITE_PRESENTON_POLL_INTERVAL=3000
+VITE_PRESENTON_MAX_RETRIES=3
+
+# ── PII payload encryption ──────────────────────────────────────────────
+# REQUIRED whenever the backend runs with PII_PAYLOAD_ENCRYPTION_ENABLED=true.
+# Must be byte-for-byte the SAME value as the backend's PII_ENCRYPTION_KEY
+# (URL-safe base64, decoding to exactly 32 bytes).
+#
+# Vite inlines this at BUILD time, so changing it requires a rebuild of the
+# SPA — restarting the backend is not enough.
+#
+# If the backend encrypts but this is unset or mismatched, the UI cannot
+# decrypt names/emails and renders a "—" placeholder instead (previously it
+# leaked raw "pii:v1:..." ciphertext onto the screen).
+#
+# Generate:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+VITE_PII_ENCRYPTION_KEY=

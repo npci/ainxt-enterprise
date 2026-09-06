@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  - job_name: 'ainxt'
+    static_configs:
+      - targets: ['fastapi:9001']
+    metrics_path: /ainxt/v1/api/metrics/prometheus
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['127.0.0.1:9701']
+    scrape_interval: 30s
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['127.0.0.1:9005']
+    scrape_interval: 30s
+
+  - job_name: 'alloy'
+    static_configs:
+      - targets: [ 'fastapi:9004' ]
+    scrape_interval: 30s
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['fastapi:9003','127.0.0.1:9003']
+    scrape_interval: 15s

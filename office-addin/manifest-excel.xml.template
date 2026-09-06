@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+  xsi:type="TaskPaneApp">
+
+  <Id>f5b0c4e3-1a6d-4b9c-9c7e-3c2a0f5b8d1e</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>{{PROVIDER_NAME}}</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="AiNxt"/>
+  <Description DefaultValue="AI-powered assistant for spreadsheet analysis, formula generation and compliance checks"/>
+  <IconUrl DefaultValue="{{ADDIN_BASE_URL}}/office-addin/icon-80.png"/>
+  <HighResolutionIconUrl DefaultValue="{{ADDIN_BASE_URL}}/office-addin/icon-80.png"/>
+  <SupportUrl DefaultValue="{{SUPPORT_URL}}"/>
+
+  <AppDomains>
+    <AppDomain>{{ADDIN_BASE_URL}}</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="{{ADDIN_BASE_URL}}/office-addin/src/taskpane/index.html"/>
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStarted.Title"/>
+            <Description resid="GetStarted.Description"/>
+            <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
+          </GetStarted>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="ainxtGroup">
+                <Label resid="GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16x16"/>
+                  <bt:Image size="32" resid="Icon.32x32"/>
+                  <bt:Image size="80" resid="Icon.80x80"/>
+                </Icon>
+                <Control xsi:type="Button" id="ainxtTaskpaneButton">
+                  <Label resid="TaskpaneButton.Label"/>
+                  <Supertip>
+                    <Title resid="TaskpaneButton.Label"/>
+                    <Description resid="TaskpaneButton.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16x16"/>
+                    <bt:Image size="32" resid="Icon.32x32"/>
+                    <bt:Image size="80" resid="Icon.80x80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AiNxtExcelTaskpane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.16x16" DefaultValue="{{ADDIN_BASE_URL}}/office-addin/icon-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="{{ADDIN_BASE_URL}}/office-addin/icon-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="{{ADDIN_BASE_URL}}/office-addin/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="{{ADDIN_BASE_URL}}"/>
+        <bt:Url id="Taskpane.Url"            DefaultValue="{{ADDIN_BASE_URL}}/office-addin/src/taskpane/index.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GetStarted.Title"     DefaultValue="AiNxt"/>
+        <bt:String id="GroupLabel"           DefaultValue="AiNxt"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Open AiNxt"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="GetStarted.Description"   DefaultValue="AiNxt AI assistant for Excel"/>
+        <bt:String id="TaskpaneButton.Tooltip"   DefaultValue="Open AiNxt AI assistant for this workbook"/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

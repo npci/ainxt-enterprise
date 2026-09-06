@@ -1,0 +1,25 @@
+{
+  "accounts": [
+    {
+      "account_id": "acc-sbx-001",
+      "fip": "Synthetic Bank (Sandbox)",
+      "type": "SAVINGS",
+      "masked_account_number": "XXXXXX4321",
+      "account_number": "50100123456789",
+      "ifsc": "SYNB0001234",
+      "balance": 184250.75,
+      "currency": "INR"
+    },
+    {
+      "account_id": "acc-sbx-002",
+      "fip": "Synthetic Bank (Sandbox)",
+      "type": "CURRENT",
+      "masked_account_number": "XXXXXX8899",
+      "account_number": "50200998877665",
+      "ifsc": "SYNB0005678",
+      "balance": 92010.00,
+      "currency": "INR"
+    }
+  ],
+  "_note": "SYNTHETIC sandbox data only — not real accounts."
+}

@@ -1,0 +1,74 @@
+# ─────────────────────────────────────────────────────────────
+# RustyCluster client configuration for AiNxt
+#
+# Discovery order (per SPEC §4.1):
+#   1. ./rustycluster.yaml          ← this file
+#   2. ./config/rustycluster.yaml
+#   3. ~/.rustycluster.yaml
+#
+# Each of the 8 logical DBs maps to a named cluster (DB0..DB7).
+# In production, each entry should point at its own physical
+# cluster (decision §17.1 of rustycluster_implementation_plan.md).
+# For local dev / testing, all 8 entries can share one node.
+#
+# Override per-DB nodes via env vars in .env:
+#   RC_NODES_DB0=10.0.0.1:50051,10.0.0.2:50051
+#   RC_NODES_DB1=10.0.0.3:50051
+#   ...
+# ─────────────────────────────────────────────────────────────
+
+rustycluster:
+
+  # ── Shared defaults — inherited by every cluster below ──────
+  defaults:
+    username: ${RUSTYCLUSTER_USERNAME}
+    password: ${RUSTYCLUSTER_PASSWORD}
+    timeout_seconds: 10.0
+    max_retries: 3
+    retry_backoff_base: 0.5
+    retry_backoff_max: 30.0
+    connection_pool_size: 5
+    enable_compression: false
+    log_level: WARNING
+
+  # ── Per-DB clusters ─────────────────────────────────────────
+  # Local dev: all 8 DBs share one RustyCluster instance at
+  # 127.0.0.1:50051. Production: override each ${RC_NODES_DBn}
+  # in .env with the actual per-cluster nodes.
+  clusters:
+
+    DB0:
+      nodes: ${RC_NODES_DB0:-127.0.0.1:50051}
+
+    DB1:
+      nodes: ${RC_NODES_DB1:-127.0.0.1:50051}
+
+    DB2:
+      nodes: ${RC_NODES_DB2:-127.0.0.1:50051}
+
+    DB3:
+      nodes: ${RC_NODES_DB3:-127.0.0.1:50051}
+
+    DB4:
+      nodes: ${RC_NODES_DB4:-127.0.0.1:50051}
+      max_retries: 5        # budget — durability-critical
+
+    DB5:
+      nodes: ${RC_NODES_DB5:-127.0.0.1:50051}
+      connection_pool_size: 8   # queue — high concurrency
+
+    DB6:
+      nodes: ${RC_NODES_DB6:-127.0.0.1:50051}
+      connection_pool_size: 8   # streams — hot path (SSE tokens)
+
+    DB7:
+      nodes: ${RC_NODES_DB7:-127.0.0.1:50051}
+
+    DB8:
+      nodes: ${RC_NODES_DB8:-127.0.0.1:50051}      # privacy svc PII cache
+
+    # Reserved for conformance tests — never used by application code.
+    # Tests scope themselves under unique key prefixes so this can share
+    # a node with DB0 in local dev but should be isolated in CI.
+    DB9:
+      nodes: ${RC_NODES_DB9:-127.0.0.1:50051}      # test-only

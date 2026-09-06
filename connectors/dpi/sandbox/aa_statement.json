@@ -1,0 +1,19 @@
+{
+  "account_id": "acc-sbx-001",
+  "masked_account_number": "XXXXXX4321",
+  "period": "last_90_days",
+  "currency": "INR",
+  "opening_balance": 142300.00,
+  "closing_balance": 184250.75,
+  "transactions": [
+    {"date": "2026-03-12", "narration": "UPI/SALARY/ACME PAYROLL",        "type": "CREDIT", "amount": 165000.00, "category": "Income"},
+    {"date": "2026-03-14", "narration": "UPI/RENT/LANDLORD",              "type": "DEBIT",  "amount": 38000.00,  "category": "Housing"},
+    {"date": "2026-03-15", "narration": "UPI/BIGBASKET/GROCERIES",        "type": "DEBIT",  "amount": 9420.50,   "category": "Groceries"},
+    {"date": "2026-03-18", "narration": "UPI/SWIGGY/FOOD",                "type": "DEBIT",  "amount": 6210.00,   "category": "Dining"},
+    {"date": "2026-03-20", "narration": "NEFT/SIP/MUTUAL FUND",           "type": "DEBIT",  "amount": 25000.00,  "category": "Investments"},
+    {"date": "2026-03-22", "narration": "UPI/ELECTRICITY BILL/BBPS",      "type": "DEBIT",  "amount": 3180.00,   "category": "Utilities"},
+    {"date": "2026-03-25", "narration": "UPI/AMAZON/SHOPPING",            "type": "DEBIT",  "amount": 12750.00,  "category": "Shopping"},
+    {"date": "2026-03-28", "narration": "UPI/FUEL/HPCL",                  "type": "DEBIT",  "amount": 4300.00,   "category": "Transport"}
+  ],
+  "_note": "SYNTHETIC sandbox data only — not a real statement."
+}

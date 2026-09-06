@@ -1,0 +1,59 @@
+{
+  "name": "agent-chain-workflow-builder",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Visual workflow builder for multi-agent AI systems",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --open",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "start": "concurrently \"cd ../backend && python -m uvicorn app.main:app --reload --port 8002\" \"npm run dev\" --names \"Backend,Frontend\" --prefix-colors \"bgGreen.bold,bgBlue.bold\""
+  },
+  "keywords": [
+    "native-orchestration",
+    "openai-compatible",
+    "ai",
+    "agents",
+    "workflow-builder"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@dagrejs/dagre": "^3.0.0",
+    "@xyflow/react": "^12.10.0",
+    "agent-chain-workspace": "file:..",
+    "axios": "^1.19.0",
+    "framer-motion": "^12.40.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "uuid": "^13.0.1",
+    "zundo": "^2.3.0",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.61.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "http-server": "^14.1.1",
+    "jsdom": "^29.1.1",
+    "postcss-prefix-selector": "^2.1.1",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.9"
+  }
+}

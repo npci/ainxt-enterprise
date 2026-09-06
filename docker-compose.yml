@@ -1,0 +1,1244 @@
+# ============================================================
+# AiNxt Platform — OSS Quickstart Docker Compose
+#
+# Starts the infrastructure services needed to run AiNxt locally.
+# The gateway itself runs directly: python gateway.py
+#
+# USAGE
+# ─────
+# 1. Copy and configure environment:
+#      cp .env.example .env
+#      # Edit .env — set JWT_SECRET and choose an LLM provider
+#
+# 2. Start infrastructure:
+#      docker compose up -d
+#
+# 3. Run database migrations:
+#      python db/migrate.py
+#
+# 4. Start the gateway (auto-creates admin on first boot):
+#      python gateway.py
+#
+# 5. Start the frontend (separate terminal):
+#      cd ai-ui && npm install && npm run dev
+#
+# 6. Open browser: http://localhost:5173
+#    Login: admin@ainxt.local — the password is generated at first boot and
+#    printed once in the backend logs (or set SEED_ADMIN_PASSWORD in .env).
+#
+# OPTIONAL PROFILES
+# ─────────────────
+# Observability (Prometheus + Grafana + Loki):
+#   docker compose --profile observability up -d
+#
+# SERVICES
+# ────────
+# postgres       :5432  — Main database (pgvector enabled)
+# redis          :6379  — Sessions, budget, streams
+# kafka          :9092  — Required event pipeline (chat history, audit, usage)
+# kafka-consumer  —     — Required. Writes Kafka events into Postgres
+# ollama         :11434 — Local LLM (free, no API key needed)
+# embed-svc      :8001  — Embedding service for semantic search
+# ============================================================
+
+# ── Shared worker configuration (used by the RQ worker pools below) ─────────
+# `x-` keys are ignored by the Compose spec; these exist only as YAML anchors
+# so the ten worker pools don't each repeat the same 40-line environment block.
+# Mirrors the doc-worker service, which predates this and is left untouched.
+x-worker-env: &worker-env
+  POSTGRES_HOST:     postgres
+  POSTGRES_PORT:     "5432"
+  POSTGRES_DB:       ${POSTGRES_DB:-ainxt_memory}
+  POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env}
+  PGVECTOR_HOST:     postgres
+  PGVECTOR_PORT:     "5432"
+  REDIS_HOST:        redis
+  REDIS_URL:         redis://redis:6379/0
+  OLLAMA_URL:        ${OLLAMA_URL:-http://ollama:11434}
+  JWT_SECRET:        ${JWT_SECRET:?Set JWT_SECRET in your .env}
+  SECRET_KEY:        ${SECRET_KEY:-${JWT_SECRET}}
+  AUDIT_SIGNING_KEY: "${AUDIT_SIGNING_KEY:?Set AUDIT_SIGNING_KEY in your .env}"
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  OPENAI_API_KEY:    ${OPENAI_API_KEY:-}
+  GEMINI_API_KEY:    ${GEMINI_API_KEY:-}
+  OPENAI_BASE_URL:       ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+  OPENAI_SIMPLE_MODEL:   ${OPENAI_SIMPLE_MODEL:-gpt-5-mini}
+  OPENAI_CODING_MODEL:   ${OPENAI_CODING_MODEL:-gpt-5.4}
+  OPENAI_LATEST_MODEL:   ${OPENAI_LATEST_MODEL:-gpt-5.5}
+  OPENAI_TERA_MODEL:     ${OPENAI_TERA_MODEL:-gpt-5.6-terra}
+  OPENAI_LUNA_MODEL:     ${OPENAI_LUNA_MODEL:-gpt-5.6-luna}
+  OPENAI_SIMPLE_DISPLAY: ${OPENAI_SIMPLE_DISPLAY:-}
+  OPENAI_CODING_DISPLAY: ${OPENAI_CODING_DISPLAY:-}
+  OPENAI_LATEST_DISPLAY: ${OPENAI_LATEST_DISPLAY:-}
+  OPENAI_TERA_DISPLAY:   ${OPENAI_TERA_DISPLAY:-}
+  OPENAI_LUNA_DISPLAY:   ${OPENAI_LUNA_DISPLAY:-}
+  GEMINI_TEXT_MODEL:        ${GEMINI_TEXT_MODEL:-gemini-3.5-flash}
+  GEMINI_CODING_LITE_MODEL: ${GEMINI_CODING_LITE_MODEL:-gemini-3.1-flash-lite}
+  GEMINI_IMAGE_MODEL:       ${GEMINI_IMAGE_MODEL:-gemini-3.1-flash-image}
+  GEMINI_VISION_MODEL:      ${GEMINI_VISION_MODEL:-gemini-3.5-flash}
+  VEO_ENABLED:           ${VEO_ENABLED:-false}
+  VEO_MODEL:             ${VEO_MODEL:-veo-3.1-generate-preview}
+  ENABLE_INJECTION_SCAN: ${ENABLE_INJECTION_SCAN:-false}
+  INJECTION_SCAN_URL:    ${INJECTION_SCAN_URL:-}
+  AINXT_DOC_STORAGE_DIR: /var/lib/ainxt/docs
+  EMBED_SVC_URL:         ${EMBED_SVC_URL:-http://embed-svc:8001}
+  # Which of embed_svc's own backends /embed calls actually use — see
+  # core/config.py's EMBED_PROVIDER comment. Read by workers/index_worker.py
+  # (index-time) here in the worker anchor; also set on gateway's own
+  # environment: block below for models/hybrid_search.py's query-time
+  # embedding (Workspace/Codebase-chat retrieval runs in-process in the
+  # gateway, not in a worker) — deliberately the SAME env var in both
+  # places, sourced from the same .env, so index-time and query-time can
+  # never end up using different embedding models against the same table.
+  EMBED_PROVIDER:        ${EMBED_PROVIDER:-ollama}
+  KAFKA_ENABLED:         ${KAFKA_ENABLED:-true}
+  KAFKA_BOOTSTRAP:       ${KAFKA_BOOTSTRAP:-kafka:19092}
+  # ── Claude (Anthropic) model ids — despite the SDLC worker block's comment
+  # claiming this anchor already supplied these, they were never actually
+  # declared here, so CLAUDE_PRIMARY_MODEL/HAIKU/OPUS_MODEL from .env never
+  # reached any worker container — core/model_registry.py's CLAUDE_* constants
+  # resolved blank, and agents/sdlc_cli_engine.py's model guard fails closed
+  # ("model guard: <blank> not allowed") before ever spawning the CLI.
+  CLAUDE_PRIMARY_MODEL: ${CLAUDE_PRIMARY_MODEL:-}
+  CLAUDE_HAIKU:         ${CLAUDE_HAIKU:-}
+  CLAUDE_OPUS_MODEL:    ${CLAUDE_OPUS_MODEL:-}
+  ENABLE_OPUS:          ${ENABLE_OPUS:-true}
+  # ── SCM / GitLab / GitHub (SDLC pipeline) ───────────────────────────────────
+  # Clone / index / MR operations run across the connector, index, security and
+  # sdlc worker pools, so they all need the SCM creds. All optional (:-) — an
+  # install with no GitLab configured (the install.sh default) starts normally;
+  # the SDLC pipeline simply reports "no GitLab token" until GITLAB_TOKEN is set.
+  SCM_PROVIDER:      ${SCM_PROVIDER:-github}
+  GITLAB_URL:        ${GITLAB_URL:-https://gitlab.com}
+  GITLAB_TOKEN:      ${GITLAB_TOKEN:-}
+  # GITHUB_TOKEN was missing entirely (only the GitLab pair was declared), so
+  # SCM_PROVIDER=github installs had no way for tools/github_tools.py or
+  # agents/sdlc_state_machine.py's per-user-PAT fallback to ever see a token.
+  GITHUB_TOKEN:      ${GITHUB_TOKEN:-}
+  JIRA_URL:          ${JIRA_URL:-}
+  # OAuth2 connector redirect base and Google credentials — required for Gmail
+  # and other Google OAuth2 connectors to complete their auth flow.
+  CONNECTOR_OAUTH_REDIRECT_BASE: ${CONNECTOR_OAUTH_REDIRECT_BASE:-http://localhost:${UI_PORT:-5173}}
+  GOOGLE_CLIENT_ID:              ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET:          ${GOOGLE_CLIENT_SECRET:-}
+  # Credential-vault key — needed to DECRYPT per-user PATs resolved from the DB
+  # when materializing a run workspace (store/credential_vault.py).
+  FERNET_KEY:        ${FERNET_KEY:-}
+  # CodeWiki: the actual clone/generate work happens in the codewiki-worker
+  # container (workers/codewiki_worker.py), not in gateway -- these MUST be
+  # in this shared worker-env block, not just gateway's own environment:
+  # block below. Previously they were gateway-only, so codewiki-worker ran
+  # with none of them set at all.
+  # Defaults to a subdirectory of the ainxt_docs volume (already mounted at
+  # /var/lib/ainxt/docs for every worker via *worker-volumes above, and for
+  # gateway via AINXT_DOC_STORAGE_DIR) -- outside the repo checkout as
+  # required (generated docs are runtime data, not source), and persists
+  # across container recreation with zero extra setup. Override if you want
+  # generated docs on a different volume/mount.
+  CODEWIKI_DOCS_DIR:      ${CODEWIKI_DOCS_DIR:-/var/lib/ainxt/docs/codewiki}
+  CODEWIKI_PYTHON:        ${CODEWIKI_PYTHON:-/opt/codewiki-python/bin/python3.12}
+  CODEWIKI_BASE_URL:      ${CODEWIKI_BASE_URL:-}
+  CODEWIKI_API_KEY:       ${CODEWIKI_API_KEY:-}
+  CODEWIKI_PROVIDER:      ${CODEWIKI_PROVIDER:-}
+  CODEWIKI_MAIN_MODEL:    ${CODEWIKI_MAIN_MODEL:-}
+  CODEWIKI_CLUSTER_MODEL: ${CODEWIKI_CLUSTER_MODEL:-}
+  CODEWIKI_FALLBACK_MODEL: ${CODEWIKI_FALLBACK_MODEL:-}
+  CODEWIKI_MAX_TOKENS_FOR_GENERATION: ${CODEWIKI_MAX_TOKENS_FOR_GENERATION:-}
+  CODEWIKI_MAX_TOKENS_FOR_CLUSTERING: ${CODEWIKI_MAX_TOKENS_FOR_CLUSTERING:-}
+  CODEWIKI_MAX_TOKEN_PER_MODULE:      ${CODEWIKI_MAX_TOKEN_PER_MODULE:-}
+  CODEWIKI_MAX_TOKEN_PER_LEAF_MODULE: ${CODEWIKI_MAX_TOKEN_PER_LEAF_MODULE:-}
+  CODEWIKI_MAX_DEPTH:     ${CODEWIKI_MAX_DEPTH:-}
+
+x-worker-volumes: &worker-volumes
+  - ainxt_docs:/var/lib/ainxt/docs
+  # Uploaded attachments — workers that read an uploaded file call
+  # storage.load(storage_path); see the gateway service for why this is a volume.
+  - ainxt_uploads:/app/storage
+  # Mirrors the structured app log to the host, same as gateway/doc-worker.
+  - ./log:/app/log
+
+x-worker-depends: &worker-depends
+  postgres:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+  # All worker pools reuse gateway's built image and declare no `build:` of
+  # their own (see the doc-worker/kafka-consumer comments on why: two
+  # services building the same tag makes buildx race itself). Waiting on
+  # gateway/service_healthy guarantees that image already exists locally
+  # before Compose creates these containers — start any of these pools
+  # without this and Compose falls back to a registry pull of a tag that
+  # was never published, failing with "pull access denied".
+  gateway:
+    condition: service_healthy
+
+
+services:
+
+  # ── PostgreSQL with pgvector ──────────────────────────────────────────────
+  # ── Gateway — the platform API ────────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      args:
+        # Optional OCR engine — see requirements-ocr.txt. Enable with
+        # WITH_OCR=1 docker compose up -d --build gateway
+        WITH_OCR: ${WITH_OCR:-0}
+        # CodeWiki documentation engine — see the Dockerfile's
+        # codewiki_builder stage. ON by default so the CodeWiki panel
+        # actually works out of the box; without it, the panel accepts
+        # requests but generation fails with "No module named codewiki".
+        # Opt out (extra build time/size — its own Python 3.12 venv + a
+        # git+https install) with:
+        # WITH_CODEWIKI=0 docker compose up -d --build gateway
+        WITH_CODEWIKI: ${WITH_CODEWIKI:-1}
+    image: ainxt-enterprise:local
+    container_name: ainxt-gateway
+    # Migrations run here rather than in a separate service: a second service
+    # sharing this `image:` tag with its own `build:` makes buildx race itself
+    # exporting the tag. Run migrations alone with:
+    #   docker compose run --rm gateway python db/migrate.py
+    command:
+      - sh
+      - -c
+      - "python db/migrate.py && exec gunicorn gateway:app -c gunicorn.conf.py"
+    environment:
+      POSTGRES_HOST:     postgres
+      POSTGRES_PORT:     "5432"
+      POSTGRES_DB:       ${POSTGRES_DB:-ainxt_memory}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env}
+      PGVECTOR_HOST:     postgres
+      PGVECTOR_PORT:     "5432"
+      REDIS_HOST:        redis
+      REDIS_URL:         redis://redis:6379/0
+      # Required. Left unset, core/kafka_producer.py silently routes every
+      # event to its Redis fallback list and kafka-consumer has nothing to
+      # read, so no chat-history or audit row is ever written to Postgres.
+      # kafka:19092 is the INTERNAL listener — see the kafka service below.
+      KAFKA_ENABLED:     ${KAFKA_ENABLED:-true}
+      KAFKA_BOOTSTRAP:   ${KAFKA_BOOTSTRAP:-kafka:19092}
+      OLLAMA_URL:        ${OLLAMA_URL:-http://ollama:11434}
+      # Point the in-house/local model tier at the bundled Ollama. Without this
+      # the local tier is disabled ("base URL not set"), so the model the API
+      # advertises as "Local (In-house)" could never actually serve a request.
+      LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-http://ollama:11434}
+      LOCAL_LLM_API_KEY:  ${LOCAL_LLM_API_KEY:-not-needed}
+      JWT_SECRET:        ${JWT_SECRET:?Set JWT_SECRET in your .env}
+      SECRET_KEY:        ${SECRET_KEY:-${JWT_SECRET}}
+      # Signs the immutable audit log. This block is an explicit allow-list, and
+      # this variable was missing from it — so core/audit_signer.py, which raises
+      # on import without a key, could never load inside the container. Every
+      # code path that signs or verifies an audit entry (governance_router,
+      # compliance_router, core/graph_audit) therefore failed at runtime, while
+      # the gateway itself stayed healthy because those imports are lazy.
+      # Required like JWT_SECRET: refuse to start rather than run unsigned.
+      AUDIT_SIGNING_KEY: "${AUDIT_SIGNING_KEY:?Set AUDIT_SIGNING_KEY in your .env — generate one using openssl rand -hex 32}"
+      APP_ENV:           ${APP_ENV:-development}
+      # Modest default: gunicorn.conf.py would otherwise use cpu*2+1 workers,
+      # each loading the ML stack. Raise for production.
+      WORKERS:           ${WORKERS:-2}
+      # The scanner is a separate service that is not part of this repo; the
+      # gateway refuses to start with this on and no INJECTION_SCAN_URL set.
+      ENABLE_INJECTION_SCAN: ${ENABLE_INJECTION_SCAN:-false}
+      INJECTION_SCAN_URL: ${INJECTION_SCAN_URL:-}
+      ENABLE_RAW_OPENAI_API: ${ENABLE_RAW_OPENAI_API:-false}
+      ENABLE_COACH: ${ENABLE_COACH:-true}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      # Knowledge Base (services/embed_svc) — compose only injects env vars a
+      # service's `environment:` block explicitly lists, so without these two
+      # lines the gateway would never see EMBED_SVC_URL/PARSE_SVC_URL even
+      # with a healthy embed-svc container: KB calls would fail with "missing
+      # protocol" (empty URL) rather than actually reaching the model server.
+      # Both stay empty — and the KB simply degrades gracefully — unless
+      # ./install.sh's Knowledge Base step (or a manual edit of .env) sets them.
+      EMBED_SVC_URL:     ${EMBED_SVC_URL:-}
+      # models/hybrid_search.py::pgvector_search reads this for query-time
+      # embedding (Workspace/Codebase-chat retrieval runs in-process here in
+      # the gateway). Must be the SAME value as the worker anchor's
+      # EMBED_PROVIDER above (same .env var) — see core/config.py's comment.
+      EMBED_PROVIDER:    ${EMBED_PROVIDER:-ollama}
+      PARSE_SVC_URL:     ${PARSE_SVC_URL:-}
+      # core/config.py defaults this to a plain /tmp path when DEPLOYMENT_MODE
+      # is "local" (the container's default) — both the raw uploaded file
+      # (pending approval) AND the final approved markdown live only here, on
+      # the container's writable layer. Without a volume + this override,
+      # ANY gateway restart between upload and approval loses the pending
+      # file outright ("uploaded file is no longer available on the server"),
+      # and a restart after approval loses the indexed KB content too.
+      # Confirmed by testing the full KB upload -> approve -> index flow.
+      KB_DOC_STORAGE_PATH: ${KB_DOC_STORAGE_PATH:-/var/lib/ainxt/kb_docs}
+      # Individual/OSS mode kill-switch — see core/config.py and
+      # .env.example's FEATURE FLAGS block. Same missing-from-allow-list trap
+      # as EMBED_SVC_URL above: without this line, setting it in .env has no
+      # effect at all inside the container (confirmed via testing).
+      HOD_APPROVAL_ENABLED: ${HOD_APPROVAL_ENABLED:-false}
+      SEED_ADMIN_PASSWORD:  ${SEED_ADMIN_PASSWORD:-}
+      # Log to the console so `docker compose logs` shows real errors.
+      GUNICORN_LOG_DIR:  ${GUNICORN_LOG_DIR:-/dev/null-not-writable}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY:    ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY:    ${GEMINI_API_KEY:-}
+      # Model routing is configured in .env, but compose's `environment:` is an
+      # explicit allow-list — without these the container silently falls back to
+      # the defaults in core/model_registry.py and .env has no effect.
+      # OPENAI_BASE_URL repoints the OpenAI SDK at Anthropic's OpenAI-compatible
+      # endpoint, so auto-routing (tier=medium -> _get_openai()) serves Claude
+      # instead of erroring on the missing OpenAI key.
+      OPENAI_BASE_URL:       ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_SIMPLE_MODEL:   ${OPENAI_SIMPLE_MODEL:-gpt-5-mini}
+      OPENAI_CODING_MODEL:   ${OPENAI_CODING_MODEL:-gpt-5.4}
+      OPENAI_LATEST_MODEL:   ${OPENAI_LATEST_MODEL:-gpt-5.5}
+      OPENAI_TERA_MODEL:     ${OPENAI_TERA_MODEL:-gpt-5.6-terra}
+      OPENAI_LUNA_MODEL:     ${OPENAI_LUNA_MODEL:-gpt-5.6-luna}
+      OPENAI_SIMPLE_DISPLAY: ${OPENAI_SIMPLE_DISPLAY:-}
+      OPENAI_CODING_DISPLAY: ${OPENAI_CODING_DISPLAY:-}
+      OPENAI_LATEST_DISPLAY: ${OPENAI_LATEST_DISPLAY:-}
+      OPENAI_TERA_DISPLAY:   ${OPENAI_TERA_DISPLAY:-}
+      OPENAI_LUNA_DISPLAY:   ${OPENAI_LUNA_DISPLAY:-}
+      GEMINI_TEXT_MODEL:        ${GEMINI_TEXT_MODEL:-gemini-3.5-flash}
+      GEMINI_CODING_LITE_MODEL: ${GEMINI_CODING_LITE_MODEL:-gemini-3.1-flash-lite}
+      GEMINI_IMAGE_MODEL:       ${GEMINI_IMAGE_MODEL:-gemini-3.1-flash-image}
+      GEMINI_VISION_MODEL:      ${GEMINI_VISION_MODEL:-gemini-3.5-flash}
+      VEO_ENABLED:           ${VEO_ENABLED:-false}
+      VEO_MODEL:             ${VEO_MODEL:-veo-3.1-generate-preview}
+      EVAL_ENABLED:          ${EVAL_ENABLED:-true}
+      # Claude model ids — same gap as the worker anchor: undeclared here means
+      # the gateway's /ainxt/v1/api/models list and core/model_registry.py
+      # never see whatever CLAUDE_PRIMARY_MODEL/HAIKU/OPUS_MODEL is set in .env.
+      CLAUDE_PRIMARY_MODEL: ${CLAUDE_PRIMARY_MODEL:-}
+      CLAUDE_HAIKU:         ${CLAUDE_HAIKU:-}
+      CLAUDE_OPUS_MODEL:    ${CLAUDE_OPUS_MODEL:-}
+      ENABLE_OPUS:          ${ENABLE_OPUS:-true}
+      AINXT_DOC_STORAGE_DIR: /var/lib/ainxt/docs
+      # Encrypts store/credential_vault.py (LLM provider API keys added via the
+      # "LLM Providers" admin screen, OAuth connector tokens, etc.). This block
+      # is an explicit allow-list — .env is NOT passed through automatically —
+      # so without this line the container never sees a FERNET_KEY that
+      # install.sh generated into .env, and any credential_vault write fails
+      # with "FERNET_KEY (or VAULT_ENCRYPTION_KEY) must be set."
+      FERNET_KEY:           ${FERNET_KEY:-}
+      VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-}
+      # SCM / GitLab / Jira connector vars — Compose environment: is an explicit
+      # allow-list; without these the gateway container never sees .env values.
+      SCM_PROVIDER:      ${SCM_PROVIDER:-github}
+      GITLAB_URL:        ${GITLAB_URL:-}
+      GITLAB_TOKEN:      ${GITLAB_TOKEN:-}
+      GITHUB_TOKEN:      ${GITHUB_TOKEN:-}
+      JIRA_URL:          ${JIRA_URL:-}
+      # Shared secret the SDLC CLI engine's spawned CLI process presents as its
+      # own ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN when calling back through
+      # SDLC_CLI_GATEWAY_URL — validated here by
+      # routers/messages_compat_router.py's _is_platform_service_key check.
+      # Must match SDLC_SERVICE_API_KEY on sdlc-worker.
+      AINXT_PLATFORM_SERVICE_API_KEYS: ${AINXT_PLATFORM_SERVICE_API_KEYS:-}
+      # OAuth2 connector redirect base and Google credentials — required for Gmail
+      # and other Google OAuth2 connectors to complete their auth flow.
+      CONNECTOR_OAUTH_REDIRECT_BASE: ${CONNECTOR_OAUTH_REDIRECT_BASE:-http://localhost:${UI_PORT:-5173}}
+      GOOGLE_CLIENT_ID:              ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET:          ${GOOGLE_CLIENT_SECRET:-}
+      # Google sign-in (auth/google_auth.py). Reuses the GOOGLE_CLIENT_ID /
+      # GOOGLE_CLIENT_SECRET above — the gmail connector's OAuth client — and
+      # only ever requests openid/email/profile, never a Gmail scope.
+      # Gateway-only: no worker serves /auth/*.
+      #
+      # These come from the SYSTEM environment (Windows user variables, or an
+      # export in your shell profile on macOS/Linux) — never from .env.
+      # Compose resolves ${VAR} from the environment of the shell it runs in,
+      # and a Windows process inherits its environment AT LAUNCH, so a value
+      # added with `setx` is invisible to terminals, IDEs and shells that were
+      # already open. Those resolve to "" and the sign-in button disappears
+      # with no error. Start the stack from a terminal opened AFTER setting
+      # them; `./doctor.sh` reports which case you are in.
+      ENABLE_GOOGLE_LOGIN:           ${ENABLE_GOOGLE_LOGIN:-false}
+      # forgot_password() (routers/auth_router.py) — off unless the operator
+      # explicitly opts in. See core/config.py for the security tradeoff.
+      SHOW_TEMP_PASSWORD_IN_UI:      ${SHOW_TEMP_PASSWORD_IN_UI:-true}
+      GOOGLE_LOGIN_REDIRECT_URI:     ${GOOGLE_LOGIN_REDIRECT_URI:-}
+      GOOGLE_AUTO_PROVISION:         ${GOOGLE_AUTO_PROVISION:-}
+      GOOGLE_POST_LOGIN_REDIRECT:    ${GOOGLE_POST_LOGIN_REDIRECT:-/portal/}
+      # CodeWiki (routers/codewiki_router.py, workers/codewiki_worker.py) —
+      # none of these were previously in this allow-list at all, so setting
+      # any of them in .env had no effect on the running container.
+      # Same default as the worker anchor above (see that comment) — MUST
+      # match if you override it, since gateway reads generated docs back
+      # from this path to serve them in the UI.
+      CODEWIKI_DOCS_DIR:      ${CODEWIKI_DOCS_DIR:-/var/lib/ainxt/docs/codewiki}
+      CODEWIKI_PYTHON:        ${CODEWIKI_PYTHON:-/opt/codewiki-python/bin/python3.12}
+      CODEWIKI_BASE_URL:      ${CODEWIKI_BASE_URL:-}
+      CODEWIKI_API_KEY:       ${CODEWIKI_API_KEY:-}
+      CODEWIKI_PROVIDER:      ${CODEWIKI_PROVIDER:-}
+      CODEWIKI_MAIN_MODEL:    ${CODEWIKI_MAIN_MODEL:-}
+      CODEWIKI_CLUSTER_MODEL: ${CODEWIKI_CLUSTER_MODEL:-}
+      CODEWIKI_FALLBACK_MODEL: ${CODEWIKI_FALLBACK_MODEL:-}
+      CODEWIKI_MAX_TOKENS_FOR_GENERATION: ${CODEWIKI_MAX_TOKENS_FOR_GENERATION:-}
+      CODEWIKI_MAX_TOKENS_FOR_CLUSTERING: ${CODEWIKI_MAX_TOKENS_FOR_CLUSTERING:-}
+      CODEWIKI_MAX_TOKEN_PER_MODULE:      ${CODEWIKI_MAX_TOKEN_PER_MODULE:-}
+      CODEWIKI_MAX_TOKEN_PER_LEAF_MODULE: ${CODEWIKI_MAX_TOKEN_PER_LEAF_MODULE:-}
+      CODEWIKI_MAX_DEPTH:     ${CODEWIKI_MAX_DEPTH:-}
+    ports:
+      - "${GATEWAY_PORT:-8000}:8000"
+    # Lets the container resolve host.docker.internal to the Docker host —
+    # needed when Ollama (or any other LLM provider) runs as a separate
+    # service on the host machine rather than in this compose stack.
+    # Docker Desktop (Mac/Windows) already resolves this name automatically;
+    # this entry is what makes it work on Linux too (host-gateway requires
+    # Docker Engine 20.10+).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ainxt_docs:/var/lib/ainxt/docs
+      # Uploaded chat attachments (core/storage.py local backend, LOCAL_STORAGE_DIR
+      # default "storage/chat_attachments", resolved relative to WORKDIR /app).
+      # MUST be a volume for two reasons:
+      #   1. Durability — without it the tree lives in the container's overlay
+      #      filesystem, so every rebuild / `up --force-recreate` destroys every
+      #      uploaded file while the chat_attachments rows survive and keep
+      #      pointing at paths that no longer exist.
+      #   2. Sharing — doc-worker calls storage.load(storage_path) to read
+      #      uploaded files when generating a document from an attachment
+      #      (workers/doc_worker.py). With per-container filesystems it could
+      #      never see anything the gateway wrote.
+      - ainxt_uploads:/app/storage
+      # Mirror the structured application log (core/logger.py) onto the host so
+      # it can be tailed without `docker compose exec`. `docker compose logs`
+      # only shows the gunicorn/stdout stream, which omits most app log lines.
+      - ./log:/app/log
+      # KB document storage — raw uploaded files (pending approval) and approved
+      # markdown live here. Shared with kb-worker so the worker can read the
+      # file the gateway wrote. See KB_DOC_STORAGE_PATH env var above.
+      - kb_docs_data:/var/lib/ainxt/kb_docs
+      # Docker socket — lets the gateway's health check verify the doc-sandbox
+      # image and lets docker_executor.py use the SDK path instead of the
+      # subprocess fallback. The doc-worker already mounts this for the same reason.
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/ainxt/v1/api/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      start_period: 180s
+      retries: 20
+    restart: unless-stopped
+
+  # ── Web UI ────────────────────────────────────────────────────────────────
+  ai-ui:
+    build:
+      # Repo root, not ./ai-ui — vite aliases '@abs' to ../AgentStudio/frontend/src,
+      # so the sibling sources must be inside the build context.
+      context: .
+      dockerfile: ai-ui/Dockerfile
+    image: ainxt-ai-ui:local
+    container_name: ainxt-ui
+    ports:
+      - "${UI_PORT:-5173}:5173"
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  # ── Document-sandbox builder — one-shot init service ─────────────────────
+  # Builds the `ainxt-doc-sandbox:latest` image that doc-worker uses to
+  # generate Word, PowerPoint, Excel and PDF files. Runs once on `docker
+  # compose up`, skips immediately if the image already exists (idempotent),
+  # and exits 0 so doc-worker's `condition: service_completed_successfully`
+  # dependency is satisfied. Without this, document generation fails with
+  # "Document sandbox unavailable: Docker is not running." because the image
+  # is missing — even though Docker itself is running fine.
+  #
+  # Uses the official `docker:cli` image (Alpine + Docker CLI, no daemon) so
+  # it can call `docker build` against the host daemon via the socket mount.
+  # The repo root is bind-mounted read-only as /workspace — the Dockerfile
+  # COPYs from skills/ainxt_doc_craft/ which lives there.
+  doc-sandbox-builder:
+    image: docker:27-cli
+    container_name: ainxt-doc-sandbox-builder
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace:ro
+    working_dir: /workspace
+    command:
+      - sh
+      - -c
+      - |
+        if docker image inspect ainxt-doc-sandbox:latest >/dev/null 2>&1; then
+          echo "ainxt-doc-sandbox:latest already built — skipping"
+          exit 0
+        fi
+        echo "Building ainxt-doc-sandbox:latest …"
+        echo "(first run pulls LibreOffice + pandoc + Node — allow a few minutes)"
+        docker build -f docker/doc-sandbox/Dockerfile -t ainxt-doc-sandbox:latest /workspace
+        echo "✓ ainxt-doc-sandbox:latest built"
+    restart: "no"
+
+  doc-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-doc-worker
+    command: ["python", "workers/start_workers.py", "--doc", "--n", "8"]
+    healthcheck:
+      disable: true
+    environment:
+      POSTGRES_HOST:     postgres
+      POSTGRES_PORT:     "5432"
+      POSTGRES_DB:       ${POSTGRES_DB:-ainxt_memory}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env}
+      REDIS_HOST:        redis
+      REDIS_URL:         redis://redis:6379/0
+      JWT_SECRET:        ${JWT_SECRET:?Set JWT_SECRET in your .env}
+      SECRET_KEY:        ${SECRET_KEY:-${JWT_SECRET}}
+      AUDIT_SIGNING_KEY: "${AUDIT_SIGNING_KEY:?Set AUDIT_SIGNING_KEY in your .env}"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY:    ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY:    ${GEMINI_API_KEY:-}
+      # Model routing is configured in .env, but compose's `environment:` is an
+      # explicit allow-list — without these the container silently falls back to
+      # the defaults in core/model_registry.py and .env has no effect.
+      # OPENAI_BASE_URL repoints the OpenAI SDK at Anthropic's OpenAI-compatible
+      # endpoint, so auto-routing (tier=medium -> _get_openai()) serves Claude
+      # instead of erroring on the missing OpenAI key.
+      OPENAI_BASE_URL:       ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_SIMPLE_MODEL:   ${OPENAI_SIMPLE_MODEL:-gpt-5-mini}
+      OPENAI_CODING_MODEL:   ${OPENAI_CODING_MODEL:-gpt-5.4}
+      OPENAI_LATEST_MODEL:   ${OPENAI_LATEST_MODEL:-gpt-5.5}
+      OPENAI_TERA_MODEL:     ${OPENAI_TERA_MODEL:-gpt-5.6-terra}
+      OPENAI_LUNA_MODEL:     ${OPENAI_LUNA_MODEL:-gpt-5.6-luna}
+      OPENAI_SIMPLE_DISPLAY: ${OPENAI_SIMPLE_DISPLAY:-}
+      OPENAI_CODING_DISPLAY: ${OPENAI_CODING_DISPLAY:-}
+      OPENAI_LATEST_DISPLAY: ${OPENAI_LATEST_DISPLAY:-}
+      OPENAI_TERA_DISPLAY:   ${OPENAI_TERA_DISPLAY:-}
+      OPENAI_LUNA_DISPLAY:   ${OPENAI_LUNA_DISPLAY:-}
+      GEMINI_TEXT_MODEL:        ${GEMINI_TEXT_MODEL:-gemini-3.5-flash}
+      GEMINI_CODING_LITE_MODEL: ${GEMINI_CODING_LITE_MODEL:-gemini-3.1-flash-lite}
+      GEMINI_IMAGE_MODEL:       ${GEMINI_IMAGE_MODEL:-gemini-3.1-flash-image}
+      GEMINI_VISION_MODEL:      ${GEMINI_VISION_MODEL:-gemini-3.5-flash}
+      VEO_ENABLED:           ${VEO_ENABLED:-false}
+      VEO_MODEL:             ${VEO_MODEL:-veo-3.1-generate-preview}
+      ENABLE_INJECTION_SCAN: ${ENABLE_INJECTION_SCAN:-false}
+      INJECTION_SCAN_URL: ${INJECTION_SCAN_URL:-}
+      AINXT_DOC_STORAGE_DIR: /var/lib/ainxt/docs
+      SCM_PROVIDER:      ${SCM_PROVIDER:-github}
+      GITLAB_URL:        ${GITLAB_URL:-}
+      GITLAB_TOKEN:      ${GITLAB_TOKEN:-}
+      JIRA_URL:          ${JIRA_URL:-}
+      CONNECTOR_OAUTH_REDIRECT_BASE: ${CONNECTOR_OAUTH_REDIRECT_BASE:-http://localhost:${UI_PORT:-5173}}
+      GOOGLE_CLIENT_ID:              ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET:          ${GOOGLE_CLIENT_SECRET:-}
+      # Shares ./log/app/agent.log with the gateway, so without this every
+      # worker line would carry core/logger.py's default service=ainxt-gateway
+      # and be indistinguishable in the interleaved file.
+      SERVICE_NAME:      ainxt-doc-worker
+    volumes:
+      - ainxt_docs:/var/lib/ainxt/docs
+      # Uploaded attachments, shared with the gateway — doc_worker.py calls
+      # storage.load(storage_path) to read an uploaded file when generating a
+      # document from it. See the gateway service for the full rationale.
+      - ainxt_uploads:/app/storage
+      # The worker launches the network-isolated document sandbox on the host
+      # Docker daemon. The socket is root-group readable on Docker Desktop.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # See the gateway service — mirrors the structured app log to the host.
+      - ./log:/app/log
+    group_add:
+      - "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # Wait for the one-shot builder to finish before starting the worker.
+      # This guarantees ainxt-doc-sandbox:latest exists before any doc job
+      # arrives, so the first generation request never hits "image not found".
+      doc-sandbox-builder:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ══ RQ worker pools ══════════════════════════════════════════════════════
+  # Each mirrors doc-worker: same image, same command shape
+  # (`start_workers.py --<pool> --n 1`), healthcheck disabled, restarts on
+  # failure. Scale a pool with `docker compose up -d --scale chat-worker=4`
+  # or raise --n. See the header of workers/start_workers.py for the
+  # per-pool concurrency guidance used in production.
+
+  # ── Chat pool (high + default + chat_queue) — interactive, latency-sensitive.
+  chat-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-chat-worker
+    command: ["python", "workers/start_workers.py", "--chat", "--n", "30"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-chat-worker
+    volumes: *worker-volumes
+    depends_on: *worker-depends
+    restart: unless-stopped
+
+  # ── Agent pool (agent_queue) — agentic/orchestrator pipelines.
+  agent-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-agent-worker
+    command: ["python", "workers/start_workers.py", "--agent", "--n", "10"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-agent-worker
+    volumes: *worker-volumes
+    depends_on: *worker-depends
+    restart: unless-stopped
+
+  # ── Index pool (index_queue) — codebase AST chunking + embedding.
+  # Opt-in, deliberately separate from the `embed` profile: index_worker.py
+  # raises "No embed service configured" without EMBED_SVC_URL reachable, so
+  # it needs embed-svc up — but turning on the Knowledge Base (document
+  # search) must not silently also start codebase indexing, so this is its
+  # own profile rather than reusing `embed`. Start via ./start-index-worker.sh
+  # (brings up embed-svc first if needed), or manually:
+  # docker compose --profile index up -d index-worker
+  index-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-index-worker
+    command: ["python", "workers/start_workers.py", "--index", "--n", "20"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-index-worker
+    volumes: *worker-volumes
+    depends_on: *worker-depends
+    restart: unless-stopped
+    profiles:
+      - index
+
+  # ── KB ingest pool (kb_queue) — knowledge-document parsing + embedding.
+  # Consumes kb_queue (Redis/RQ): runs activate_doc() after a document is
+  # approved — Docling parse, chunk, embed, pgvector insert — then flips the
+  # doc to ACTIVE. Without this, an approved doc sits at status=INDEXING
+  # forever, because nothing else in this compose file drains that queue.
+  # Bundled with the same `embed` profile as embed-svc: activate_doc() calls
+  # out to PARSE_SVC_URL/EMBED_SVC_URL, so this worker has nothing useful to
+  # do without it. Uses the same image as gateway (built above) — no rebuild.
+  kb-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-kb-worker
+    command: ["python", "workers/start_workers.py", "--kb", "--n", "2"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-kb-worker
+      EMBED_SVC_URL:     ${EMBED_SVC_URL:-}
+      PARSE_SVC_URL:     ${PARSE_SVC_URL:-}
+      KB_DOC_STORAGE_PATH: ${KB_DOC_STORAGE_PATH:-/var/lib/ainxt/kb_docs}
+    # `- *worker-volumes` (anchor as a single list item) is invalid YAML-for-
+    # compose here -- it nests the anchor's list inside this one instead of
+    # splatting it, so docker compose rejects the whole file with
+    # "services.kb-worker.volumes.0 must be a string". Every other worker
+    # using *worker-volumes uses the correct `volumes: *worker-volumes` (no
+    # dash) form; kb-worker is the only one that also needs one extra volume
+    # beyond the shared set, so its items are spelled out explicitly instead.
+    volumes:
+      - ainxt_docs:/var/lib/ainxt/docs
+      - ainxt_uploads:/app/storage
+      - ./log:/app/log
+      - kb_docs_data:/var/lib/ainxt/kb_docs
+    depends_on: *worker-depends
+    restart: unless-stopped
+    profiles:
+      - embed
+
+  # ── SDLC pool (sdlc_queue) — LLM-heavy, long-running jobs.
+  sdlc-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-sdlc-worker
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-sdlc-worker
+      # ── SDLC CLI engine (SDLC_CLI_* namespace, read at call time) ──────────
+      SDLC_CLI_BINARY_PATH: /usr/local/bin/ainxt
+      SDLC_CLI_FLAVOR:      ${SDLC_CLI_FLAVOR:-v3}
+      SDLC_SERVICE_API_KEY: ${SDLC_SERVICE_API_KEY:-}
+      # Undeclared previously → always blank in the container regardless of
+      # .env, so the spawned CLI's ANTHROPIC_BASE_URL was set to "" (see
+      # agents/sdlc_cli_engine.py _cli_env) instead of the gateway's
+      # Anthropic-compat endpoint.
+      SDLC_CLI_GATEWAY_URL: ${SDLC_CLI_GATEWAY_URL:-}
+      # ── SDLC phase model selection — PROVIDER-AGNOSTIC ──────────────────────
+      # This worker no longer hardcodes Anthropic model ids. The shared
+      # *worker-env anchor already supplies CLAUDE_*/OPENAI_* defaults as
+      # fallbacks; the knobs below let an operator point every phase/tier at ANY
+      # provider's model (incl. a harness with no Anthropic). Compose only injects
+      # DECLARED vars, so each must be listed here to reach the container — all
+      # default to blank (:-) → fall back to the anchor's tier defaults, i.e. a
+      # no-op unless set in .env.
+      #
+      # Per-tier remap (one place; family-agnostic; see core/model_registry.py
+      # _tier_env_override). Set these to your models to run without Anthropic.
+      SDLC_TIER_SIMPLE_MODEL:   ${SDLC_TIER_SIMPLE_MODEL:-}
+      SDLC_TIER_COMPLEX_MODEL:  ${SDLC_TIER_COMPLEX_MODEL:-}
+      SDLC_TIER_SOLUTION_MODEL: ${SDLC_TIER_SOLUTION_MODEL:-}
+      SDLC_TIER_MEDIUM_MODEL:   ${SDLC_TIER_MEDIUM_MODEL:-}
+      SDLC_TIER_DEEP_MODEL:     ${SDLC_TIER_DEEP_MODEL:-}
+      # Per-phase override — each accepts a router tier name OR a concrete model id.
+      SDLC_CLI_CLASSIFY_MODEL:      ${SDLC_CLI_CLASSIFY_MODEL:-}
+      SDLC_CLI_PLAN_MODEL:          ${SDLC_CLI_PLAN_MODEL:-}
+      SDLC_CLI_IMPLEMENT_MODEL:     ${SDLC_CLI_IMPLEMENT_MODEL:-}
+      SDLC_MODEL_NORMALIZE:         ${SDLC_MODEL_NORMALIZE:-}
+      SDLC_MODEL_CODE_REVIEW:       ${SDLC_MODEL_CODE_REVIEW:-}
+      SDLC_MODEL_MANIFEST_VALIDATE: ${SDLC_MODEL_MANIFEST_VALIDATE:-}
+      SDLC_GOVERNANCE_REVIEW_MODEL: ${SDLC_GOVERNANCE_REVIEW_MODEL:-}
+      SDLC_GOVERNANCE_FIX_MODEL:    ${SDLC_GOVERNANCE_FIX_MODEL:-}
+      # Run-workspace root. Must be writable by the runtime user (appuser, uid
+      # 1000); the image default /opt/ainxt is root-owned and NOT creatable by
+      # appuser → the early checkout's os.makedirs raised PermissionError, which
+      # the pipeline's broad except MISREPORTED as "no GitLab token".
+      BUILDER_WORKSPACE_ROOT: ${BUILDER_WORKSPACE_ROOT:-/home/appuser/workspaces}
+      # Same root-owned-default trap as BUILDER_WORKSPACE_ROOT: core/config.py's
+      # BUILDER_CACHE_ROOT defaults to /opt/ainxt/build-cache (root-owned, not
+      # creatable by appuser), so the post-gate TEST_VERIFY/build step fails with
+      # "[Errno 13] Permission denied: '/opt/ainxt'" — confirmed via a live run
+      # (feature run e11f667c: TEST_VERIFY reported exactly this error).
+      BUILDER_CACHE_ROOT: ${BUILDER_CACHE_ROOT:-/home/appuser/build-cache}
+      # Third instance of the same trap — core.config.BUILD_LOG_DIR (compile/test
+      # log output dir) also defaults to /opt/ainxt/logs/builds. Confirmed live:
+      # fixing only BUILDER_CACHE_ROOT still left TEST_VERIFY failing with the
+      # identical "[Errno 13] Permission denied: '/opt/ainxt'" until this was set.
+      BUILD_LOG_DIR: ${BUILD_LOG_DIR:-/home/appuser/logs/builds}
+    volumes:
+      - ainxt_docs:/var/lib/ainxt/docs
+      - ainxt_uploads:/app/storage
+      - ./log:/app/log
+      # The native-Linux `ainxt` CLI binary spawned by the SDLC engine.
+      - ./bin/ainxt:/usr/local/bin/ainxt:ro
+      # Per-model CLI config template (base_url + x-api-key placeholder). Mounted
+      # to a NEUTRAL read-only path — NOT directly into /home/appuser/.ainxt: a
+      # single-FILE bind-mount would make Docker create the parent .ainxt as root,
+      # which then blocks the CLI (appuser) from writing its session/audit dirs
+      # (FS_PERMISSION_DENIED). The command below renders it into the
+      # appuser-owned ~/.ainxt at startup, injecting ANTHROPIC_API_KEY from .env.
+      - ./bin/config.toml:/opt/ainxtcfg/config.toml:ro
+    # Render the CLI config from its template — substituting the real Anthropic
+    # key from ANTHROPIC_API_KEY (kept in .env, never committed) — into the
+    # appuser-owned home, then run the SDLC worker.
+    command:
+      - sh
+      - -c
+      - >
+        mkdir -p /home/appuser/.ainxt &&
+        sed "s|__ANTHROPIC_API_KEY__|${ANTHROPIC_API_KEY:-}|g" /opt/ainxtcfg/config.toml > /home/appuser/.ainxt/config.toml &&
+        exec python workers/start_workers.py --sdlc --n 1
+    depends_on: *worker-depends
+    restart: unless-stopped
+
+  # ── Security scan pool (security_queue).
+  security-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-security-worker
+    command: ["python", "workers/start_workers.py", "--security", "--n", "1"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-security-worker
+    volumes: *worker-volumes
+    depends_on: *worker-depends
+    restart: unless-stopped
+
+  # ── CodeWiki pool (codewiki_queue) — documentation generation.
+  # Opt-in — gated by ./install.sh's WITH_CODEWIKI flag (declined with
+  # --without-codewiki, in which case the image doesn't even have the
+  # `codewiki` CLI installed — see the Dockerfile's codewiki_builder stage —
+  # so there is nothing useful for this worker to do). Without this profile
+  # it had no gate at all: it never started via ./install.sh (simply missing
+  # from its compose_services list) but WOULD have silently started, and
+  # crash-looped on every job with no healthcheck to surface it, on any bare
+  # `docker compose up -d`. Manually: docker compose --profile codewiki up -d codewiki-worker
+  codewiki-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-codewiki-worker
+    command: ["python", "workers/start_workers.py", "--codewiki", "--n", "1"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-codewiki-worker
+    volumes: *worker-volumes
+    depends_on: *worker-depends
+    restart: unless-stopped
+    profiles:
+      - codewiki
+
+  # ── Connector pool (connector_queue) — async connector tool calls
+  # and fired Buddy/Cowork scheduled tasks.
+  connector-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-connector-worker
+    command: ["python", "workers/start_workers.py", "--connector", "--n", "1"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-connector-worker
+    volumes: *worker-volumes
+    depends_on: *worker-depends
+    restart: unless-stopped
+
+  # ── Coach pool (coach_queue) + coach Kafka consumer. The Kafka half is a
+  # no-op unless KAFKA_ENABLED=true.
+  coach-worker:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-coach-worker
+    command: ["python", "workers/start_workers.py", "--coach", "--n", "1"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-coach-worker
+    volumes: *worker-volumes
+    depends_on: *worker-depends
+    restart: unless-stopped
+
+  # ── Cron scheduler — thread_purge, ad_sync, purge_worker, HITL watchdog.
+  # Run exactly ONE of these; a second instance double-fires every cron job.
+  scheduler:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-scheduler
+    # OPT-IN, unlike the queue pools above — enable with:
+    #   docker compose --profile scheduler up -d
+    #
+    # This is the only worker that DELETES data, so it is deliberately not on by
+    # default. purge_worker (daily 00:00) drops chat_attachments rows older than
+    # UPLOAD_RETAIN_DAYS, which defaults to just 2 (workers/purge_worker.py:37)
+    # and is unset in .env. Those rows carry image_caption/image_description, so
+    # purging one doesn't only delete the file — it also erases the vision
+    # description the web chat replays on follow-up turns ("what car is it?").
+    # Turning this on by default would have quietly started expiring chat
+    # attachments after 2 days on every deployment. Set UPLOAD_RETAIN_DAYS /
+    # DOC_RETAIN_DAYS / IMAGE_RETAIN_DAYS (and THREAD_RETAIN_DAYS, default 90)
+    # to values you actually want BEFORE enabling this profile.
+    #
+    # Run exactly ONE instance: a second one double-fires every cron job.
+    profiles:
+      - scheduler
+    command: ["python", "workers/start_workers.py", "--scheduler", "--n", "1"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *worker-env
+      # Without this every worker line in the shared agent.log would carry
+      # core/logger.py's default service=ainxt-gateway and be unattributable.
+      SERVICE_NAME: ainxt-scheduler
+    volumes: *worker-volumes
+    depends_on: *worker-depends
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ainxt-postgres
+    restart: unless-stopped
+    environment:
+      # SEC-F-010 (2026-08-26): no hardcoded default password. The previous
+      # default ("ainxt_local_dev") was a credential baked into a file that
+      # ships in the OSS repo/git history — anyone who ran `docker compose up`
+      # without an .env got a database with a publicly known password. The
+      # required-variable syntax (${VAR:?message}) makes `docker compose up`
+      # fail with a clear message instead of silently starting with a known
+      # password. Set POSTGRES_PASSWORD in your .env (see .env.example / step 1
+      # in the USAGE block above) before starting this stack.
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env before running docker compose up (see step 1 above) — no default password is provided}
+      POSTGRES_DB:       ${POSTGRES_DB:-ainxt_memory}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c work_mem=4MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ainxt-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Ollama — local LLM (free, no API key needed) ──────────────────────────
+  # After starting, pull a model:
+  #   docker exec ainxt-ollama ollama pull llama3.2
+  #   docker exec ainxt-ollama ollama pull nomic-embed-text
+  # Then set in .env:
+  #   LOCAL_LLM_BASE_URL=http://localhost:11434
+  #   OLLAMA_URL=http://localhost:11434
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ainxt-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  # ── Embed service — Knowledge Base model server ───────────────────────────
+  # Parsing (Docling), embedding, and reranking for the Knowledge Base.
+  # Models are downloaded on first startup/use into the embed_models_cache
+  # volume, so they persist across restarts instead of re-downloading every time.
+  #
+  # Opt-in — build and start with:
+  #   docker compose --profile embed up -d --build embed-svc kb-worker
+  # Leave EMBED_SVC_URL= (empty) in .env to run without the Knowledge Base.
+  # ./install.sh's final step offers to run this for you interactively.
+  embed-svc:
+    build:
+      context: .
+      args:
+        WITH_OCR: ${WITH_OCR:-0}
+    image: ainxt-embed-svc:local
+    container_name: ainxt-embed-svc
+    command: ["python", "-m", "uvicorn", "services.embed_svc.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    restart: unless-stopped
+    environment:
+      OLLAMA_URL:             ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_EMBED_MODEL:     ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      OPENAI_API_KEY:         ${OPENAI_API_KEY:-}
+      OPENAI_EMBED_MODEL:     ${OPENAI_EMBED_MODEL:-text-embedding-3-small}
+      # Repoints the OpenAI SDK call embed_svc's OpenAIEmbedder makes at a
+      # proxy / self-hosted OpenAI-compatible endpoint instead of the real
+      # api.openai.com — same var the gateway's own audio (TTS) feature
+      # uses. Previously missing from this allow-list, so setting it in
+      # .env had no effect inside this container: it always fell back to
+      # the real OpenAI API regardless.
+      OPENAI_BASE_URL:        ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      NOMIC_EMBED_URL:        ${NOMIC_EMBED_URL:-}
+      NOMIC_EMBED_API_KEY:    ${NOMIC_EMBED_API_KEY:-}
+      NOMIC_EMBED_MODEL:      ${NOMIC_EMBED_MODEL:-nomic-embed-text-v1.5}
+      # Tuning-only, all with working code-level defaults if unset — see
+      # services/embed_svc/config.py. Previously missing from this
+      # allow-list, so setting them in .env silently did nothing.
+      NOMIC_EMBED_DIMS:       ${NOMIC_EMBED_DIMS:-768}
+      NOMIC_EMBED_TIMEOUT:    ${NOMIC_EMBED_TIMEOUT:-60.0}
+      NOMIC_EMBED_BATCH:      ${NOMIC_EMBED_BATCH:-64}
+      RERANKER_MODEL:         ${RERANKER_MODEL:-}
+      # RERANKER_VARIANT (if set) overrides RERANKER_MODEL in reranker.py, so
+      # it must NOT default to "bge_large" here — that would silently discard
+      # a custom RERANKER_MODEL. Leaving it empty lets the code's own default
+      # (BAAI/bge-reranker-large via RERANKER_MODEL) take effect instead.
+      RERANKER_VARIANT:       ${RERANKER_VARIANT:-}
+      USE_DOCLING_PARSER:     ${USE_DOCLING_PARSER:-1}
+      PARSE_SVC_ENABLED:      ${PARSE_SVC_ENABLED:-1}
+      # A non-empty artifacts path tells Docling "this folder is already
+      # populated, don't auto-download" — Docling raises immediately if it's
+      # missing files a pipeline needs (confirmed: its PDF pipeline does NOT
+      # reliably lazy-download its RapidOCR weights the way the embedding/
+      # reranker models do). So this must point at a real, populated
+      # directory. `docling-tools models download` (run once by
+      # ./install.sh's Knowledge Base step, or manually — see
+      # docs/KB_SETUP.md) populates exactly this path inside the persistent
+      # embed_models_cache volume. Safe to leave as the default even before
+      # that command has run — building the DocumentConverter itself doesn't
+      # touch these files; only the first real parse of a given format does.
+      DOCLING_ARTIFACTS_PATH: ${DOCLING_ARTIFACTS_PATH:-/home/appuser/.cache/docling/models}
+      PADDLEOCR_MODELS_PATH:  ${PADDLEOCR_MODELS_PATH:-}
+      REDIS_HOST:             redis
+    volumes:
+      - embed_models_cache:/home/appuser/.cache
+    ports:
+      - "${EMBED_SVC_PORT:-8001}:8001"
+    depends_on:
+      - ollama
+      - redis
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8001/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      start_period: 60s
+      retries: 10
+    profiles:
+      - embed
+
+  # ── Kafka — async event streaming (REQUIRED) ─────────────────────────────
+  # Not optional and not behind a profile. The gateway publishes chat turns,
+  # audit entries, metrics, thread/SDLC/budget/agent and Coach events to these
+  # topics, and kafka-consumer below is what writes them into Postgres. With no
+  # broker the producer degrades to a Redis fallback list with a 7-day TTL
+  # (core/kafka_producer.py) that only drains on a consumer start — so history
+  # and audit rows never land. See KAFKA_ENABLED / KAFKA_BOOTSTRAP in .env.
+  #
+  # Two listeners, deliberately: containers reach the broker as kafka:19092,
+  # while the host (native/--local installs, kafka CLI tools) uses
+  # localhost:9092. A single PLAINTEXT://localhost:9092 advertised address
+  # would hand in-container clients "localhost", which resolves to their own
+  # container and fails.
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: ainxt-kafka
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: EXTERNAL://:9092,CONTROLLER://:9093,INTERNAL://:19092
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:${KAFKA_PORT:-9092},INTERNAL://kafka:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      # Bootstraps via the INTERNAL listener (kafka:19092), not EXTERNAL
+      # (localhost:9092). EXTERNAL's advertised address is
+      # localhost:${KAFKA_PORT} — whenever a port collision pushes KAFKA_PORT
+      # off 9092 (choose_ports() in install.sh), this healthcheck, running
+      # INSIDE the container on the real fixed port 9092, gets told by the
+      # broker's own metadata response to reach it on the advertised port
+      # instead — which now lands on 9093, the CONTROLLER listener, not a
+      # broker port. That listener does not understand a Metadata request, so
+      # kafka-topics.sh fails with "UnsupportedVersionException: The node
+      # does not support METADATA", the healthcheck never passes, and every
+      # service with `depends_on: kafka: condition: service_healthy` — the
+      # gateway included — refuses to start. INTERNAL's advertised address
+      # (kafka:19092) is fixed regardless of KAFKA_PORT, so it never has this
+      # problem.
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:19092 --list > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Kafka consumer — event → Postgres writer (REQUIRED) ──────────────────
+  # Without this process the broker accepts events and nothing ever reads them:
+  # chat history, audit log, model_usages, thread/SDLC/budget/agent and Coach
+  # rows are all inserted here, not by the gateway. gateway.py produces the
+  # event and returns; this is the other half of that write path.
+  #
+  # Reuses the gateway's built image rather than declaring its own `build:` —
+  # two services sharing an `image:` tag with separate `build:` blocks makes
+  # buildx race itself exporting the tag (same reason migrations run inside the
+  # gateway command). depends_on gateway/service_healthy therefore also
+  # guarantees the image exists and db/migrate.py has already run.
+  kafka-consumer:
+    image: ainxt-enterprise:local
+    # No build: of its own — this tag only ever comes from gateway's build.
+    # never = fail fast with a clear "no such image" if it's missing, instead
+    # of silently falling back to a registry pull of a tag that was never
+    # published (the 'pull access denied for ainxt-enterprise' failure).
+    pull_policy: never
+    container_name: ainxt-kafka-consumer
+    command: ["python", "workers/kafka_consumer.py"]
+    # The gateway image carries a HEALTHCHECK that curls localhost:8000/ainxt/v1/api/health.
+    # This process has no HTTP server, so that check can only ever fail and the
+    # container reports "unhealthy" while consuming perfectly. The image has
+    # neither pgrep nor ps to substitute a process check, so disable it and let
+    # `restart: unless-stopped` plus doctor.sh's status check cover liveness.
+    healthcheck:
+      disable: true
+    environment:
+      POSTGRES_HOST:     postgres
+      POSTGRES_PORT:     "5432"
+      POSTGRES_DB:       ${POSTGRES_DB:-ainxt_memory}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env}
+      PGVECTOR_HOST:     postgres
+      PGVECTOR_PORT:     "5432"
+      REDIS_HOST:        redis
+      REDIS_URL:         redis://redis:6379/0
+      KAFKA_ENABLED:     "true"
+      KAFKA_BOOTSTRAP:   kafka:19092
+      JWT_SECRET:        ${JWT_SECRET:?Set JWT_SECRET in your .env}
+      SECRET_KEY:        ${SECRET_KEY:-${JWT_SECRET}}
+      # core/audit_signer.py raises on import without a valid key, and this
+      # process writes audit rows — same requirement as the gateway.
+      AUDIT_SIGNING_KEY: "${AUDIT_SIGNING_KEY:?Set AUDIT_SIGNING_KEY in your .env — generate one using openssl rand -hex 32}"
+      APP_ENV:           ${APP_ENV:-development}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Prometheus — metrics (optional observability) ─────────────────────────
+  # Enable with: docker compose --profile observability up -d
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: ainxt-prometheus
+    profiles:
+      - observability
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  # ── Grafana — dashboards (optional observability) ─────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: ainxt-grafana
+    profiles:
+      - observability
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+
+volumes:
+  ainxt_docs:
+    driver: local
+  # Uploaded chat attachments. Shared by gateway + doc-worker; see the mount
+  # comment on the gateway service.
+  ainxt_uploads:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+  kafka_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  # Docling/HF/reranker model weights — downloaded once, reused across restarts.
+  # Owned by appuser (see Dockerfile RUN mkdir -p /home/appuser/.cache).
+  embed_models_cache:
+    driver: local
+  # KB document storage — raw uploaded files (pending approval) and approved
+  # markdown. Shared between gateway (writes) and kb-worker (reads for indexing).
+  # Owned by appuser (see Dockerfile RUN mkdir -p /var/lib/ainxt/kb_docs).
+  kb_docs_data:
+    driver: local
+
+
+networks:
+  default:
+    name: ainxt_net

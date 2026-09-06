@@ -1,0 +1,8 @@
+{
+  "documents": [
+    {"doc_id": "dl-sbx-pan",  "type": "PAN",            "issuer": "Income Tax Dept (Sandbox)", "name": "PAN Card",          "issued_on": "2018-06-01", "verified": true},
+    {"doc_id": "dl-sbx-dl",   "type": "DRIVING_LICENCE","issuer": "RTO (Sandbox)",             "name": "Driving Licence",   "issued_on": "2021-02-15", "verified": true},
+    {"doc_id": "dl-sbx-aadh", "type": "AADHAAR",        "issuer": "UIDAI (Sandbox)",           "name": "Aadhaar",           "issued_on": "2016-09-09", "verified": true}
+  ],
+  "_note": "SYNTHETIC sandbox data only — not real documents."
+}

@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "/etc/prometheus/alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # host.docker.internal resolves to the host machine from inside Docker (Mac/Windows).
+  # On Linux use --add-host=host.docker.internal:host-gateway in docker-compose.yml.
+  - job_name: "ainxt-platform"
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+    metrics_path: /ainxt/v1/api/metrics/prometheus
+    scrape_interval: 10s
+
+  - job_name: "otel-collector"
+    static_configs:
+      - targets: ["otel-collector:8888"]

@@ -1,0 +1,28 @@
+# ============================================================
+# LLM Proxy Service — standalone requirements
+# Install: pip install -r services/llm_proxy/requirements.txt
+# ============================================================
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# LLM SDKs
+anthropic>=0.40.0
+openai>=1.50.0
+google-genai>=1.0.0
+
+# HTTP client (proxy streaming)
+httpx>=0.27.0
+
+# BigQuery client — used by /spend/gcp/bigquery endpoint (GCP billing export)
+google-cloud-bigquery>=3.13.0,<4.0.0
+
+# Structured logging (must match core/logger.py in root)
+structlog>=24.0.0
+
+# Retry logic
+tenacity>=8.2.0
+
+# Env loading
+python-dotenv>=1.2.2

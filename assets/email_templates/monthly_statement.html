@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AiNxt Monthly Usage Statement — {{ billing_period_label }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
+
+<!-- ===== Outer wrapper ===== -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f7fa;padding:24px 0;">
+  <tr><td align="center">
+
+    <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0"
+           style="max-width:640px;width:100%;background:#ffffff;border-radius:8px;
+                  box-shadow:0 1px 3px rgba(0,0,0,0.08);overflow:hidden;">
+
+      <!-- ===== Header ===== -->
+      <tr>
+        <td bgcolor="#1e3a8a" style="background-color:#1e3a8a;background:#1e3a8a;
+                   background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 100%);
+                   padding:28px 32px;color:#ffffff;">
+          <div style="font-size:22px;font-weight:700;letter-spacing:.3px;">AiNxt</div>
+          <div style="font-size:14px;opacity:.85;margin-top:2px;">AiNxt · AI Platform</div>
+          <div style="margin-top:18px;font-size:20px;font-weight:600;">
+            Monthly Usage Statement
+          </div>
+          <div style="margin-top:4px;font-size:14px;opacity:.9;">
+            Billing Period: {{ billing_period_label }}
+          </div>
+        </td>
+      </tr>
+
+      <!-- ===== Section 1 · Account summary ===== -->
+      <tr><td style="padding:24px 32px 8px 32px;">
+        <h2 style="margin:0 0 12px 0;font-size:16px;color:#1e3a8a;
+                   border-bottom:2px solid #e5e7eb;padding-bottom:6px;">
+          Account Summary
+        </h2>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="font-size:14px;">
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;width:45%;">User</td>
+            <td style="padding:4px 0;font-weight:600;">{{ user.name }}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;">Employee ID</td>
+            <td style="padding:4px 0;">{{ user.employee_id or "—" }}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;">Department</td>
+            <td style="padding:4px 0;">{{ user.department or "—" }}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;">AD Level / Role</td>
+            <td style="padding:4px 0;">{{ user.ad_level }} · {{ user.role }}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#6b7280;">Budget Tier</td>
+            <td style="padding:4px 0;font-weight:600;">{{ summary.budget_tier }}</td>
+          </tr>
+        </table>
+
+        <!-- Money + tokens at a glance -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="margin-top:18px;border-collapse:separate;border-spacing:8px 0;">
+          <tr>
+            <td width="33%" valign="top" style="background:#eef2ff;border-radius:6px;padding:14px;">
+              <div style="font-size:11px;color:#4338ca;letter-spacing:.6px;text-transform:uppercase;">Monthly Budget</div>
+              <div style="font-size:20px;font-weight:700;color:#1e3a8a;margin-top:4px;">
+                ${{ "%.2f"|format(summary.monthly_budget) }}
+              </div>
+            </td>
+            <td width="33%" valign="top" style="background:#fef3c7;border-radius:6px;padding:14px;">
+              <div style="font-size:11px;color:#92400e;letter-spacing:.6px;text-transform:uppercase;">Amount Spent</div>
+              <div style="font-size:20px;font-weight:700;color:#92400e;margin-top:4px;">
+                ${{ "%.2f"|format(summary.total_cost) }}
+              </div>
+            </td>
+            <td width="33%" valign="top" style="background:#dcfce7;border-radius:6px;padding:14px;">
+              <div style="font-size:11px;color:#166534;letter-spacing:.6px;text-transform:uppercase;">Remaining</div>
+              <div style="font-size:20px;font-weight:700;color:#166534;margin-top:4px;">
+                ${{ "%.2f"|format(summary.remaining) }}
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Utilization progress bar -->
+        <div style="margin-top:18px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280;margin-bottom:4px;">
+            <span>Budget utilization</span>
+            <span style="font-weight:600;color:#1f2937;">{{ "%.1f"|format(summary.utilization_pct) }}%</span>
+          </div>
+          <div style="width:100%;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;">
+            <div style="width:{{ summary.utilization_clamped }}%;height:100%;
+                        background:{{ summary.utilization_color }};"></div>
+          </div>
+        </div>
+
+        <!-- Counts row -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="margin-top:16px;font-size:13px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;">Total Requests</td>
+            <td style="padding:6px 0;text-align:right;font-weight:600;">{{ "{:,}".format(summary.total_requests) }}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;">Total Input Tokens</td>
+            <td style="padding:6px 0;text-align:right;">{{ "{:,}".format(summary.input_tokens) }}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;">Total Output Tokens</td>
+            <td style="padding:6px 0;text-align:right;">{{ "{:,}".format(summary.output_tokens) }}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;font-weight:600;">Total Tokens Consumed</td>
+            <td style="padding:6px 0;text-align:right;font-weight:700;">{{ "{:,}".format(summary.total_tokens) }}</td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <!-- ===== Section 2 · Day-wise ===== -->
+      <tr><td style="padding:24px 32px 8px 32px;">
+        <h2 style="margin:0 0 12px 0;font-size:16px;color:#1e3a8a;
+                   border-bottom:2px solid #e5e7eb;padding-bottom:6px;">
+          Day-wise Usage
+        </h2>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="font-size:12px;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#f3f4f6;color:#374151;">
+              <th align="left"  style="padding:8px;border-bottom:1px solid #e5e7eb;">Date</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Requests</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Input</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Output</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Total Tokens</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Cost ($)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in daily %}
+            <tr style="{% if loop.index is even %}background:#fafafa;{% endif %}">
+              <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ row.date }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;color:{% if row.requests==0 %}#9ca3af{% else %}#1f2937{% endif %};">
+                {% if row.requests == 0 %}—{% else %}{{ "{:,}".format(row.requests) }}{% endif %}
+              </td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;color:{% if row.requests==0 %}#9ca3af{% else %}#1f2937{% endif %};">
+                {% if row.requests == 0 %}—{% else %}{{ "{:,}".format(row.input_tokens) }}{% endif %}
+              </td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;color:{% if row.requests==0 %}#9ca3af{% else %}#1f2937{% endif %};">
+                {% if row.requests == 0 %}—{% else %}{{ "{:,}".format(row.output_tokens) }}{% endif %}
+              </td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;color:{% if row.requests==0 %}#9ca3af{% else %}#1f2937{% endif %};">
+                {% if row.requests == 0 %}—{% else %}{{ "{:,}".format(row.total_tokens) }}{% endif %}
+              </td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;color:{% if row.requests==0 %}#9ca3af{% else %}#1f2937{% endif %};">
+                {% if row.requests == 0 %}—{% else %}${{ "%.4f"|format(row.cost) }}{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            <tr style="background:#eef2ff;font-weight:700;">
+              <td style="padding:8px;">Total</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.total_requests) }}</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.input_tokens) }}</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.output_tokens) }}</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.total_tokens) }}</td>
+              <td align="right" style="padding:8px;">${{ "%.4f"|format(summary.total_cost) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </td></tr>
+
+      <!-- ===== Section 3 · Model-wise ===== -->
+      <tr><td style="padding:24px 32px 8px 32px;">
+        <h2 style="margin:0 0 12px 0;font-size:16px;color:#1e3a8a;
+                   border-bottom:2px solid #e5e7eb;padding-bottom:6px;">
+          Model-wise Usage
+        </h2>
+        {% if models %}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="font-size:12px;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#f3f4f6;color:#374151;">
+              <th align="left"  style="padding:8px;border-bottom:1px solid #e5e7eb;">Model</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Requests</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Input</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Output</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Total Tokens</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Cost ($)</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">% Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in models %}
+            <tr style="{% if loop.index is even %}background:#fafafa;{% endif %}">
+              <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ m.display_name }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "{:,}".format(m.requests) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "{:,}".format(m.input_tokens) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "{:,}".format(m.output_tokens) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "{:,}".format(m.total_tokens) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">${{ "%.4f"|format(m.cost) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "%.1f"|format(m.pct) }}%</td>
+            </tr>
+            {% endfor %}
+            <tr style="background:#eef2ff;font-weight:700;">
+              <td style="padding:8px;">Total</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.total_requests) }}</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.input_tokens) }}</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.output_tokens) }}</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.total_tokens) }}</td>
+              <td align="right" style="padding:8px;">${{ "%.4f"|format(summary.total_cost) }}</td>
+              <td align="right" style="padding:8px;">100.0%</td>
+            </tr>
+          </tbody>
+        </table>
+        {% else %}
+        <div style="font-size:13px;color:#6b7280;padding:8px 0;">No model usage recorded for this period.</div>
+        {% endif %}
+      </td></tr>
+
+      <!-- ===== Section 4 · Channel-wise ===== -->
+      <tr><td style="padding:24px 32px 8px 32px;">
+        <h2 style="margin:0 0 12px 0;font-size:16px;color:#1e3a8a;
+                   border-bottom:2px solid #e5e7eb;padding-bottom:6px;">
+          Channel-wise Usage
+        </h2>
+        {% if channels %}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="font-size:12px;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#f3f4f6;color:#374151;">
+              <th align="left"  style="padding:8px;border-bottom:1px solid #e5e7eb;">Channel</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Requests</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Input</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Output</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Total Tokens</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">Cost ($)</th>
+              <th align="right" style="padding:8px;border-bottom:1px solid #e5e7eb;">% Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in channels %}
+            <tr style="{% if loop.index is even %}background:#fafafa;{% endif %}">
+              <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ c.display_name }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "{:,}".format(c.requests) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "{:,}".format(c.input_tokens) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "{:,}".format(c.output_tokens) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "{:,}".format(c.total_tokens) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">${{ "%.4f"|format(c.cost) }}</td>
+              <td align="right" style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">{{ "%.1f"|format(c.pct) }}%</td>
+            </tr>
+            {% endfor %}
+            <tr style="background:#eef2ff;font-weight:700;">
+              <td style="padding:8px;">Total</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.total_requests) }}</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.input_tokens) }}</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.output_tokens) }}</td>
+              <td align="right" style="padding:8px;">{{ "{:,}".format(summary.total_tokens) }}</td>
+              <td align="right" style="padding:8px;">${{ "%.4f"|format(summary.total_cost) }}</td>
+              <td align="right" style="padding:8px;">100.0%</td>
+            </tr>
+          </tbody>
+        </table>
+        {% else %}
+        <div style="font-size:13px;color:#6b7280;padding:8px 0;">No channel data captured for this period.</div>
+        {% endif %}
+      </td></tr>
+
+      <!-- ===== Footer ===== -->
+      <tr><td style="padding:24px 32px 28px 32px;border-top:1px solid #e5e7eb;background:#fafafa;">
+        <div style="font-size:11px;color:#6b7280;line-height:1.5;">
+          This is an auto-generated statement. For queries, contact your AiNxt administrator.<br/>
+          You can opt out of monthly statements from your AiNxt profile settings.
+        </div>
+        <div style="font-size:10px;color:#9ca3af;margin-top:8px;">
+          © {{ billing_year }} AiNxt Platform
+        </div>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+
+</body>
+</html>

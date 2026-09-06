@@ -1,0 +1,209 @@
+name	version	license
+aiohappyeyeballs	2.7.1	PSF-2.0
+aiohttp	3.14.3	Apache-2.0 AND MIT
+aiohttp-retry	2.9.1	MIT
+aiosignal	1.4.0	Apache 2.0
+albucore	0.0.24	MIT License
+albumentations	2.0.8	MIT License
+annotated-doc	0.0.5	MIT
+annotated-types	0.8.0	MIT License
+anthropic	0.100.0	MIT
+anyio	4.13.0	MIT
+APScheduler	3.11.3	MIT
+argon2-cffi	25.1.0	MIT
+argon2-cffi-bindings	26.1.0	MIT
+attrs	26.1.0	MIT
+bcrypt	4.0.1	Apache License, Version 2.0
+beautifulsoup4	4.14.3	MIT License
+camelot-py	2.0.0	MIT
+certifi	2026.7.22	MPL-2.0
+cffi	2.1.1	MIT-0
+charset-normalizer	3.5.1	MIT
+click	8.5.0	BSD-3-Clause
+cobble	0.1.4	BSD License
+contourpy	1.3.3	BSD 3-Clause License
+croniter	6.2.2	MIT License
+cryptography	50.0.0	Apache-2.0 OR BSD-3-Clause
+cuda-bindings	13.3.1	LicenseRef-NVIDIA-SOFTWARE-LICENSE
+cuda-pathfinder	1.8.0	Apache-2.0
+cuda-toolkit	13.0.3.0	LicenseRef-NVIDIA-SOFTWARE-LICENSE
+cycler	0.12.1	Copyright (c) 2015, matplotlib project
+Cython	3.3.0	Apache-2.0
+defusedxml	0.7.1	PSFL
+Deprecated	1.3.1	MIT
+distro	1.9.0	Apache License, Version 2.0
+docker	7.1.0	Apache Software License
+docstring_parser	0.18.0	MIT
+et_xmlfile	2.0.0	MIT
+fastapi	0.136.1	MIT
+filelock	3.32.4	MIT License
+fire	0.7.1	Apache-2.0
+flatbuffers	25.12.19	Apache 2.0
+fonttools	4.63.0	MIT
+frozenlist	1.8.0	Apache-2.0
+fsspec	2026.7.0	BSD-3-Clause
+google-api-core	2.34.0	Apache 2.0
+google-auth	2.57.0	Apache 2.0
+google-cloud-bigquery	3.44.0	Apache 2.0
+google-cloud-core	2.7.0	Apache 2.0
+google-crc32c	1.8.0	Apache-2.0
+google-genai	1.75.0	Apache-2.0
+google-resumable-media	2.10.2	Apache 2.0
+googleapis-common-protos	1.75.2	Apache 2.0
+greenlet	3.5.5	MIT AND PSF-2.0
+grpcio	1.83.1	Apache-2.0
+grpcio-status	1.83.1	Apache-2.0
+gunicorn	26.0.0	MIT
+h11	0.16.0	MIT
+hf-xet	1.6.0	Apache Software License
+httpcore	1.0.9	BSD License
+httpcore2	2.12.0	BSD License
+httptools	0.8.0	MIT
+httpx	0.28.1	BSD-3-Clause
+httpx2	2.12.0	BSD License
+huggingface_hub	1.29.0	Apache-2.0
+idna	3.19	BSD-3-Clause
+ImageIO	2.37.4	BSD-2-Clause
+iniconfig	2.3.0	MIT
+Jinja2	3.1.6	BSD License
+jiter	0.16.0	MIT
+joblib	1.5.3	BSD-3-Clause
+jsonschema	4.26.0	MIT
+jsonschema-specifications	2025.9.1	MIT
+kafka-python	2.3.2	Apache Software License
+kiwisolver	1.5.1	=========================
+lazy-loader	0.5	BSD-3-Clause
+limits	5.8.0	MIT License
+lmdb	2.3.0	OLDAP-2.8
+lxml	6.1.0	BSD-3-Clause
+magika	0.6.3	Apache-2.0
+mammoth	1.11.0	BSD-2-Clause
+Markdown	3.10.2	BSD-3-Clause
+markdown-it-py	4.2.0	MIT License
+markdownify	1.2.3	MIT License
+markitdown	0.1.7	MIT
+MarkupSafe	3.0.3	BSD-3-Clause
+matplotlib	3.10.9	License agreement for matplotlib versions 1.3.0 and later
+mcp	2.1.1	MIT
+mcp-types	2.1.1	MIT
+mdurl	0.1.2	MIT License
+minio	7.2.20	Apache-2.0
+mpmath	1.3.0	BSD
+multidict	6.7.1	Apache License 2.0
+mypy_extensions	1.1.0	MIT
+networkx	3.6.1	BSD-3-Clause
+numpy	1.26.4	Copyright (c) 2005-2023, NumPy Developers.
+ollama	0.6.1	MIT
+onnxruntime	1.26.0	MIT License
+openai	2.36.0	Apache-2.0
+opencv-contrib-python	4.11.0.86	Apache 2.0
+opencv-python	4.11.0.86	Apache 2.0
+opencv-python-headless	4.11.0.86	Apache 2.0
+openpyxl	3.1.5	MIT
+opentelemetry-api	1.44.0	Apache-2.0
+opt-einsum	3.3.0	MIT
+orjson	3.11.9	Apache Software License
+packaging	26.3	Apache-2.0 OR BSD-2-Clause
+paddleocr	2.10.0	Apache License 2.0
+paddlepaddle	3.2.2	Apache Software License
+pandas	2.3.3	BSD 3-Clause License
+passlib	1.7.4	BSD
+pdfminer.six	20251230	MIT
+pdfplumber	0.11.9	MIT License
+pgvector	0.4.2	MIT
+pillow	12.3.0	MIT-CMU
+pip	24.0	MIT
+playa-pdf	1.1.0	MIT
+pluggy	1.6.0	MIT
+prometheus_client	0.25.0	Apache-2.0 AND BSD-2-Clause
+propcache	0.5.2	Apache-2.0
+proto-plus	1.28.4	Apache 2.0
+protobuf	7.36.0	3-Clause BSD License
+psycopg	3.3.4	LGPL-3.0-only
+psycopg-binary	3.3.4	LGPL-3.0-only
+psycopg-pool	3.3.1	LGPL-3.0-only
+psycopg2-binary	2.9.12	LGPL with exceptions
+pyasn1	0.6.4	BSD-2-Clause
+pyasn1_modules	0.4.2	BSD
+pyclipper	1.4.0	MIT
+pycparser	3.0	BSD-3-Clause
+pycryptodome	3.23.0	BSD, Public Domain
+pydantic	2.13.4	MIT
+pydantic-settings	2.14.2	MIT License
+pydantic_core	2.46.4	MIT
+Pygments	2.21.0	BSD-2-Clause
+PyJWT	2.13.0	MIT
+pyparsing	3.3.2	MIT
+pypdf	6.16.1	BSD-3-Clause
+pypdfium2	4.30.0	(Apache-2.0 OR BSD-3-Clause) AND LicenseRef-PdfiumThirdParty
+pytest	9.1.1	MIT
+pytest-asyncio	1.4.0	Apache-2.0
+python-dateutil	2.9.0.post0	Dual License
+python-docx	1.2.0	MIT
+python-dotenv	1.2.2	BSD-3-Clause
+python-multipart	0.0.31	Apache Software License
+python-pptx	1.0.2	MIT
+pytz	2026.3.post1	MIT
+PyYAML	6.0.3	MIT
+RapidFuzz	3.14.5	MIT
+rapidocr-onnxruntime	1.4.4	Apache-2.0
+redis	7.1.1	MIT License
+referencing	0.37.0	MIT
+regex	2026.7.19	Apache-2.0 AND CNRI-Python
+reportlab	4.5.1	BSD license (see license.txt for details), Copyright (c) 200
+requests	2.33.1	Apache-2.0
+rich	15.0.0	MIT
+rpds-py	2026.6.3	MIT
+rq	2.7.0	BSD License
+safetensors	0.8.0	Apache Software License
+scikit-image	0.26.0	Files: *
+scikit-learn	1.8.0	BSD-3-Clause
+scipy	1.17.1	Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Develope
+sentence-transformers	6.0.0	Apache-2.0
+setuptools	79.0.1	MIT
+shapely	2.1.2	BSD 3-Clause
+shellingham	1.5.4	ISC License
+simsimd	6.5.16	Apache-2.0
+six	1.17.0	MIT
+slowapi	0.1.9	MIT
+sniffio	1.3.1	MIT OR Apache-2.0
+soupsieve	2.9.2	MIT License
+SQLAlchemy	2.0.52	MIT
+sse-starlette	3.4.8	BSD-3-Clause
+starlette	1.3.1	BSD-3-Clause
+stringzilla	5.1.2	Apache-2.0
+striprtf	0.0.26	BSD-3-Clause
+structlog	25.5.0	Apache Software License
+sympy	1.14.0	BSD
+tabulate	0.10.0	MIT
+tenacity	9.1.4	Apache 2.0
+termcolor	3.3.0	MIT
+threadpoolctl	3.6.0	BSD-3-Clause
+tifffile	2026.3.3	BSD-3-Clause
+tiktoken	0.12.0	MIT License
+tokenizers	0.23.1	Apache Software License
+tqdm	4.70.0	MPL-2.0 AND MIT
+transformers	5.16.1	Apache 2.0 License
+tree-sitter	0.25.2	MIT License
+tree-sitter-c-sharp	0.23.1	MIT
+tree-sitter-embedded-template	0.25.0	MIT
+tree-sitter-language-pack	0.13.0	MIT OR Apache-2.0
+tree-sitter-languages	1.10.2	Apache 2.0
+tree-sitter-yaml	0.7.2	MIT
+triton	3.7.1	MIT License
+truststore	0.10.4	MIT
+typer	0.27.2	MIT
+typing-inspection	0.4.4	MIT
+typing_extensions	4.16.0	PSF-2.0
+tzdata	2026.3	Apache-2.0
+tzlocal	5.4.4	MIT
+urllib3	2.7.0	MIT
+uvicorn	0.46.0	BSD-3-Clause
+uvloop	0.22.1	MIT License
+watchfiles	1.2.0	MIT
+websockets	16.1.1	BSD-3-Clause
+wheel	0.45.1	MIT License
+wrapt	2.3.0	BSD-2-Clause
+xlrd	2.0.2	BSD
+xlsxwriter	3.2.9	BSD-2-Clause
+yarl	1.24.5	Apache-2.0

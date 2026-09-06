@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Discussions — Table Rendering: Before vs After</title>
+<style>
+  :root {
+    --indigo: #4f46e5;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --bg: #f7f7f8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  header.page {
+    background: var(--indigo);
+    color: #fff;
+    padding: 22px 28px;
+  }
+  header.page h1 { margin: 0 0 4px; font-size: 20px; }
+  header.page p { margin: 0; opacity: .85; font-size: 13px; }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 26px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+  }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .panel > .tag {
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tag.bad { background: #fef2f2; color: #b91c1c; border-bottom: 1px solid #fee2e2; }
+  .tag.good { background: #ecfdf5; color: #047857; border-bottom: 1px solid #d1fae5; }
+
+  .reply { padding: 18px 20px; }
+
+  /* Bot reply header row (mimics the screenshot) */
+  .bot-line { display: flex; gap: 10px; margin-bottom: 10px; }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--indigo); color:#fff; font-weight:700;
+    display:flex; align-items:center; justify-content:center; font-size:13px; flex:0 0 auto;
+  }
+  .meta { font-size: 13px; color: var(--muted); }
+  .meta b { color: var(--ink); }
+  .pill {
+    background: #eef2ff; color: var(--indigo);
+    font-size: 11px; font-weight:600; padding: 2px 8px; border-radius: 999px; margin-left: 6px;
+  }
+
+  .content p { margin: 0 0 10px; font-size: 14px; }
+  .content h4 { margin: 14px 0 6px; font-size: 14px; }
+
+  /* ===== BEFORE: prose classes resolve to nothing (Tailwind v4 plugin not loaded) =====
+     Tables render as raw, unstyled HTML: no borders, cramped columns. */
+  .before table {
+    /* browser default table — no border-collapse, no padding => cramped */
+    font-size: 14px;
+  }
+  .before th, .before td {
+    padding: 0;              /* no cell padding -> columns crammed together */
+    text-align: left;
+    border: none;           /* no borders */
+    white-space: nowrap;
+  }
+  .before th { font-weight: 700; }
+  .before caption { caption-side: top; text-align: left; color: var(--muted); font-size: 12px; }
+
+  /* ===== AFTER: typography plugin loaded + custom table renderers ===== */
+  .after .tablewrap {
+    margin: 12px 0;
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .after table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .after thead { background: #f9fafb; }
+  .after th {
+    border-bottom: 1px solid var(--line);
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+  }
+  .after td {
+    border-bottom: 1px solid #f1f2f4;
+    padding: 10px 12px;
+    vertical-align: top;
+    color: var(--ink);
+  }
+  .after tbody tr:nth-child(even) { background: rgba(249,250,251,.6); }
+  .after tbody tr:last-child td { border-bottom: none; }
+
+  .callout {
+    max-width: 1180px; margin: 0 auto 30px; padding: 0 20px;
+  }
+  .callout .box {
+    background:#fff; border:1px solid var(--line); border-radius:14px; padding: 18px 22px;
+  }
+  .callout h3 { margin: 0 0 10px; font-size: 15px; }
+  .callout code {
+    background:#f3f4f6; padding: 2px 6px; border-radius:6px; font-size:13px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .steps { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+  .steps li { margin: 4px 0; }
+  .diff-added { color:#047857; } .diff-file { font-weight:600; }
+  .flow {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    font-size:13px; color:var(--muted); margin-top:6px;
+  }
+  .flow .node { background:#f3f4f6; padding:6px 10px; border-radius:8px; color:var(--ink); }
+  .flow .arrow { color: var(--indigo); font-weight:700; }
+</style>
+</head>
+<body>
+  <header class="page">
+    <h1>Discussions Board — Bot Reply Table Rendering</h1>
+    <p>Simulation: how the markdown table rendered <b>earlier (broken)</b> vs <b>now (fixed)</b></p>
+  </header>
+
+  <div class="wrap">
+    <!-- ================= BEFORE ================= -->
+    <section class="panel">
+      <div class="tag bad">▲ Earlier — prose styles not loaded (Tailwind v4)</div>
+      <div class="reply">
+        <div class="bot-line">
+          <div class="avatar">A</div>
+          <div class="meta"><b>AiNxt</b> · 5h ago <span class="pill">bot reply</span></div>
+        </div>
+        <div class="content before">
+          <p>✅ <b>What you <i>can</i> do instead</b></p>
+          <table>
+            <thead>
+              <tr><th>Need</th><th>Where to go</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Find a specific colleague</td><td>AiNxt Intranet / People Directory</td></tr>
+              <tr><td>Org chart / team structure</td><td>HR portal or your manager</td></tr>
+              <tr><td>Contact for a specific team</td><td>Internal Confluence / SharePoint pages</td></tr>
+              <tr><td>IT/access queries</td><td>Helpdesk ticket</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:12px;color:var(--muted);font-size:12.5px;">
+            ↑ No borders, no cell padding — columns collide, exactly like the screenshot.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= AFTER ================= -->
+    <section class="panel">
+      <div class="tag good">✔ Now — @plugin typography + custom table renderers</div>
+      <div class="reply">
+        <div class="bot-line">
+          <div class="avatar">A</div>
+          <div class="meta"><b>AiNxt</b> · 5h ago <span class="pill">bot reply</span></div>
+        </div>
+        <div class="content after">
+          <p>✅ <b>What you <i>can</i> do instead</b></p>
+          <div class="tablewrap">
+            <table>
+              <thead>
+                <tr><th>Need</th><th>Where to go</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Find a specific colleague</td><td>AiNxt Intranet / People Directory</td></tr>
+                <tr><td>Org chart / team structure</td><td>HR portal or your manager</td></tr>
+                <tr><td>Contact for a specific team</td><td>Internal Confluence / SharePoint pages</td></tr>
+                <tr><td>IT/access queries</td><td>Helpdesk ticket</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top:12px;color:var(--muted);font-size:12.5px;">
+            ↑ Bordered container, shaded header, padded cells, zebra rows, horizontal scroll if wide.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= EXPLANATION ================= -->
+  <div class="callout">
+    <div class="box">
+      <h3>Why it broke &amp; what changed</h3>
+      <p style="font-size:14px;margin:0 0 12px;">
+        The app runs on <b>Tailwind CSS v4</b>. The typography plugin was declared the old v3 way
+        (<code>require("@tailwindcss/typography")</code> in <code>tailwind.config.js</code>), which v4 ignores.
+        So every <code>prose</code> class produced <b>zero</b> styling and tables fell back to raw browser defaults.
+      </p>
+
+      <div class="flow">
+        <span class="node">GFM markdown table</span>
+        <span class="arrow">→</span>
+        <span class="node">react-markdown + remark-gfm → &lt;table&gt;</span>
+        <span class="arrow">→</span>
+        <span class="node" style="background:#fef2f2;color:#b91c1c;">prose CSS = empty ❌</span>
+        <span class="arrow">→</span>
+        <span class="node" style="background:#fef2f2;color:#b91c1c;">cramped table</span>
+      </div>
+      <div class="flow" style="margin-top:10px;">
+        <span class="node">GFM markdown table</span>
+        <span class="arrow">→</span>
+        <span class="node">react-markdown + remark-gfm → &lt;table&gt;</span>
+        <span class="arrow">→</span>
+        <span class="node" style="background:#ecfdf5;color:#047857;">@plugin typography + renderers ✅</span>
+        <span class="arrow">→</span>
+        <span class="node" style="background:#ecfdf5;color:#047857;">clean table</span>
+      </div>
+
+      <h3 style="margin-top:18px;">The fix (2 files)</h3>
+      <ol class="steps">
+        <li><span class="diff-file">ai-ui/src/index.css</span> — added
+          <code class="diff-added">@plugin "@tailwindcss/typography";</code> right after
+          <code>@import "tailwindcss";</code></li>
+        <li><span class="diff-file">ai-ui/src/components/Discussions.jsx</span> — added custom
+          <code>table / thead / th / td / tr</code> renderers to <code>MarkdownView</code>
+          (bordered wrapper, shaded header, padding, zebra rows, horizontal scroll).</li>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>

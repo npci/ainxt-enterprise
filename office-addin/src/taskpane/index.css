@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright 2026 National Payments Corporation of India. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }

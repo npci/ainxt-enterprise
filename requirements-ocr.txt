@@ -1,0 +1,24 @@
+# Optional OCR engine — PaddleOCR. NOT part of the default install.
+#
+# The platform ships with rapidocr-onnxruntime (CPU-only, ~16 MB) which covers
+# scanned PDFs, embedded raster images and image uploads. PaddleOCR is a second
+# engine some documents read better with; in practice a small minority of
+# deployments need it.
+#
+# Cost of enabling: ~353 MB installed (paddlepaddle runtime).
+#
+# Install:
+#     Docker  ./install.sh --with-ocr
+#             WITH_OCR=1 docker compose up -d --build gateway
+#     Native  source .venv/bin/activate && pip install -r requirements-ocr.txt
+#
+# Verify afterwards:
+#     GET /ainxt/v1/api/abs/documents/capabilities   -> paddleocr: true
+#
+# PINNED EXACTLY, deliberately. The previous `paddleocr>=2.7.0` /
+# `paddlepaddle>=3.0.0` ranges made pip resolve through 55 paddle* releases —
+# measured at over 20 minutes on a cold install — because paddleocr 3.x drags in
+# the paddlex dependency tree. These are the versions the platform is verified
+# against; bump them deliberately, together, and re-measure.
+paddleocr==2.10.0
+paddlepaddle==3.2.2

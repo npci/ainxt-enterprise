@@ -1,0 +1,452 @@
+/* ============================================================================
+   Condition Builder — Config Panel
+   ============================================================================ */
+
+.cb-root {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.cb-cases {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.cb-card {
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 16px;
+    background: var(--color-surface, #ffffff);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.cb-card:hover {
+    border-color: rgba(79, 70, 229, 0.28);
+    box-shadow: 0 14px 34px rgba(79, 70, 229, 0.1);
+    transform: translateY(-1px);
+}
+
+.cb-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    background: linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(238, 242, 255, 0.72));
+}
+
+.cb-card-head-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.cb-badge {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--brand-gradient, linear-gradient(135deg, #4f46e5, #7c3aed));
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    border-radius: 10px;
+    flex-shrink: 0;
+    font-family: var(--font-family-base);
+    box-shadow: 0 5px 14px rgba(79, 70, 229, 0.24);
+}
+
+.cb-name-input {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-family-base) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    padding: 8px 11px !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+.cb-card-remove {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-text-muted, #9ca3af);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.cb-card-remove:hover {
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.2);
+    color: var(--color-error, #dc2626);
+}
+
+.cb-mode-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px 16px 0;
+}
+
+.cb-simple {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.05), rgba(14, 165, 233, 0.04));
+    border: 1px solid rgba(99, 102, 241, 0.14);
+    border-radius: 14px;
+}
+
+.cb-simple-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--color-accent, #4f46e5);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.cb-simple-input {
+    font-family: var(--font-family-base);
+    font-size: 13px;
+    padding: 11px 12px;
+    border-radius: 10px;
+    background: var(--color-surface, #ffffff);
+}
+
+.cb-simple-hint {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--color-text-muted, #9ca3af);
+}
+
+.cb-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px 16px;
+}
+
+.cb-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cb-rows-empty {
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--color-text-muted, #9ca3af);
+    background: var(--color-surface-2, #f3f2ef);
+    border: 1px dashed var(--color-border, #dededd);
+    border-radius: 8px;
+}
+
+.cb-row-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cb-logic {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    background: rgba(241, 245, 249, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 10px;
+    width: fit-content;
+}
+
+.cb-logic-pill {
+    padding: 5px 14px;
+    font-size: 10px;
+    font-weight: 800;
+    font-family: var(--font-family-base);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--color-text-muted, #9ca3af);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cb-logic-pill:hover {
+    color: var(--color-text-secondary, #6b7280);
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.cb-logic-pill.active {
+    background: var(--color-surface, #ffffff);
+    border-color: rgba(99, 102, 241, 0.2);
+    color: var(--color-accent, #4f46e5);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.12);
+}
+
+.cb-when-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.cb-row-connector {
+    align-self: flex-start;
+    margin-left: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted, #9ca3af);
+    padding: 2px 6px;
+    background: var(--color-surface-2, #f3f2ef);
+    border-radius: 4px;
+    width: fit-content;
+}
+
+.cb-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(248, 250, 252, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 12px;
+}
+
+/* A labeled control group: a small caption sits above its input/select. */
+.cb-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.cb-field-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted, #9ca3af);
+    font-family: var(--font-family-base);
+}
+
+/* Field row: the select expands; the remove button hugs the right. */
+.cb-field-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.cb-field-select {
+    flex: 1;
+    min-width: 0;
+}
+
+.cb-field-custom {
+    width: 100%;
+    margin-top: 2px;
+}
+
+/* Condition + Value share one row, each taking half the width. */
+.cb-row-line--bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    min-width: 0;
+}
+
+.cb-field--op,
+.cb-field--val {
+    min-width: 0;
+}
+
+.cb-row-remove--placeholder {
+    width: 30px;
+    height: 30px;
+    display: inline-block;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
+/* Consistent height + typography across every control in a row so the
+   dropdowns and inputs line up (fixes the earlier "glitched" look). */
+.cb-row .form-input,
+.cb-row .form-select {
+    box-sizing: border-box;
+    height: 38px;
+    font-family: var(--font-family-base);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-primary, #111827);
+    padding: 0 12px;
+    border-radius: 10px;
+    min-width: 0;
+    width: 100%;
+    background-color: var(--color-surface, #ffffff);
+}
+
+.cb-row .form-select {
+    padding-right: 30px;
+    background-size: 11px 11px;
+    background-position: right 10px center;
+    cursor: pointer;
+    text-overflow: ellipsis;
+}
+
+.cb-row-remove {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--color-text-muted, #9ca3af);
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.cb-row-remove:hover {
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.18);
+    color: var(--color-error, #dc2626);
+}
+
+.cb-add-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    background: rgba(79, 70, 229, 0.06);
+    border: 1px solid rgba(79, 70, 229, 0.12);
+    border-radius: 9px;
+    color: var(--color-accent, #4f46e5);
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-family-base);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: fit-content;
+}
+
+.cb-add-row:hover {
+    background: rgba(79, 70, 229, 0.1);
+    border-color: rgba(79, 70, 229, 0.22);
+}
+
+.cb-expr {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 11px 16px 13px;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.05), rgba(248, 250, 252, 0.86));
+    border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.cb-expr-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--color-text-muted, #9ca3af);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--font-family-base);
+}
+
+.cb-expr-text {
+    font-family: var(--font-family-base);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-accent-dark, #4338ca);
+    line-height: 1.5;
+    padding: 9px 11px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(99, 102, 241, 0.14);
+    border-radius: 8px;
+    word-break: break-word;
+}
+
+.cb-add-case {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 16px;
+    background: linear-gradient(135deg, rgba(238, 242, 255, 0.96), rgba(224, 242, 254, 0.7));
+    border: 1.5px dashed rgba(99, 102, 241, 0.46);
+    border-radius: 16px;
+    color: var(--color-accent, #4f46e5);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font-family-base);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cb-add-case:hover {
+    background: rgba(79, 70, 229, 0.1);
+    border-color: var(--color-accent, #4f46e5);
+    color: var(--color-accent-dark, #4338ca);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.1);
+}
+
+.cb-else {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    background: var(--color-surface-2, #f3f2ef);
+    border: 1px solid var(--color-border-subtle, #ebebea);
+    border-radius: 10px;
+    font-family: var(--font-family-base);
+}
+
+.cb-else-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 10px;
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #dededd);
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 800;
+    font-family: var(--font-family-mono, 'Consolas', monospace);
+    color: var(--color-text-secondary, #6b7280);
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+}
+
+.cb-else-text {
+    font-size: 12px;
+    color: var(--color-text-secondary, #6b7280);
+    line-height: 1.4;
+}
+
+@media (max-width: 420px) {
+    .cb-row-line--bottom {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,199 @@
+{
+  "id": null,
+  "uid": "ainxt-system-metrics",
+  "title": "System Metrics (Host)",
+  "tags": ["ainxt", "observability", "system"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "Node",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(node_uname_info, instance)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2
+      }
+    ]
+  },
+
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "CPU Usage %",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "expr": "100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\", instance=~\"$instance\"}[5m])))",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Memory Usage %",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "expr": "100 * (1 - (node_memory_MemAvailable_bytes{instance=~\"$instance\"} / node_memory_MemTotal_bytes{instance=~\"$instance\"}))",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 75 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Disk Usage %",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "expr": "100 * (1 - (node_filesystem_avail_bytes{instance=~\"$instance\", mountpoint=\"/\", fstype!=\"rootfs\"} / node_filesystem_size_bytes{instance=~\"$instance\", mountpoint=\"/\", fstype!=\"rootfs\"}))",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 75 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Load (1m)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "expr": "node_load1{instance=~\"$instance\"}",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "CPU Usage Over Time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\", instance=~\"$instance\"}[5m])))",
+          "legendFormat": "CPU %",
+          "refId": "A"
+        },
+        {
+          "expr": "avg by (instance) (rate(node_cpu_seconds_total{mode=\"iowait\", instance=~\"$instance\"}[5m])) * 100",
+          "legendFormat": "IO Wait %",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Memory Over Time",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\"}",
+          "legendFormat": "Total",
+          "refId": "A"
+        },
+        {
+          "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\"} - node_memory_MemAvailable_bytes{instance=~\"$instance\"}",
+          "legendFormat": "Used",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Network I/O",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(node_network_receive_bytes_total{instance=~\"$instance\", device!~\"lo|docker.*|veth.*\"}[5m])",
+          "legendFormat": "RX {{device}}",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(node_network_transmit_bytes_total{instance=~\"$instance\", device!~\"lo|docker.*|veth.*\"}[5m])",
+          "legendFormat": "TX {{device}}",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Disk I/O",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(node_disk_reads_completed_total{instance=~\"$instance\"}[5m])",
+          "legendFormat": "Reads/s {{device}}",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(node_disk_writes_completed_total{instance=~\"$instance\"}[5m])",
+          "legendFormat": "Writes/s {{device}}",
+          "refId": "B"
+        }
+      ]
+    }
+
+  ]
+}

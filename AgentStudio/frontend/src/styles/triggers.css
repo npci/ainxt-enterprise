@@ -1,0 +1,1573 @@
+/* ============================================================
+   Triggers / Routines — UI styles
+   Mirrors the look of the Routines tab from the
+   reference screenshots: pill-tabs, soft cards, IST hints.
+   ============================================================ */
+
+/* -- Section wrapper --------------------------------------- */
+.trigger-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.trigger-section--compact {
+    padding: 12px 0 4px;
+}
+
+.trigger-section-hint {
+    display: block !important;
+    font-size: 11px;
+    font-weight: 400;
+    color: #64748b;
+    margin-top: 4px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.trigger-section-empty,
+.trigger-section-disabled {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 8px 0 12px;
+}
+
+.trigger-section-disabled {
+    padding: 10px 12px;
+    background: rgba(99, 102, 241, 0.05);
+    border: 1px dashed rgba(99, 102, 241, 0.25);
+    border-radius: 8px;
+    color: #6366f1;
+}
+
+/* -- Add button -------------------------------------------- */
+.trigger-add-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: transparent;
+    border: 1px dashed rgba(99, 102, 241, 0.4);
+    border-radius: 10px;
+    color: #4f46e5;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.trigger-add-btn:hover {
+    background: rgba(99, 102, 241, 0.06);
+    border-color: rgba(99, 102, 241, 0.7);
+}
+
+/* -- Card ---------------------------------------------------- */
+.trigger-card {
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* Inside the modal we strip the outer card frame so the modal body
+   itself acts as the card. The picker still keeps its own muted
+   background to separate the schedule controls from the input + meta
+   below, but the nested card-in-card look goes away. The draft card
+   keeps its indigo accent so users see when they're editing an unsaved
+   new trigger. */
+.trigger-section--modal .trigger-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 0;
+}
+
+.trigger-section--modal .trigger-card.is-draft {
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.04), transparent);
+    border: 1px dashed rgba(99, 102, 241, 0.35);
+    padding: 12px 14px;
+    border-radius: 12px;
+}
+
+.trigger-card.is-disabled {
+    opacity: 0.6;
+}
+
+.trigger-card.is-draft {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.03), #fff);
+}
+
+.trigger-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.trigger-card-name {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 11px;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #0f172a;
+    background: #fafafa;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.trigger-card-name::placeholder {
+    color: #94a3b8;
+}
+
+.trigger-card-name:focus {
+    outline: none;
+    border-color: #6366f1;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.trigger-card-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.trigger-card-toggle:hover {
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.trigger-card-toggle input[type="checkbox"] {
+    accent-color: #4f46e5;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+.trigger-card-toggle:has(input:checked) {
+    color: #4f46e5;
+}
+
+.trigger-card-history-btn,
+.trigger-card-delete {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 9px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #64748b;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.trigger-card-history-btn:hover {
+    background: rgba(99, 102, 241, 0.08);
+    color: #4f46e5;
+}
+
+.trigger-card-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* -- Edit trigger button ------------------------------------- */
+/* Explicit "Edit" affordance in the card header. Replaces the earlier
+   chevron so the intent is unambiguous: the button toggles the schedule
+   editor + input textarea. Everything else on the card (name field,
+   Enabled toggle, History, Delete) leaves the schedule alone. */
+.trigger-card-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: transparent;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 7px;
+    color: #4f46e5;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.trigger-card-edit-btn:hover {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.7);
+    color: #4338ca;
+}
+
+.trigger-card-edit-btn:focus-visible {
+    outline: 2px solid rgba(99, 102, 241, 0.35);
+    outline-offset: 1px;
+}
+
+/* When collapsed, tighten padding so a saved trigger reads as a single
+   compact row rather than a large mostly-empty card. */
+.trigger-card.is-collapsed {
+    padding: 10px 12px;
+}
+
+.trigger-card.is-collapsed .trigger-card-header {
+    margin-bottom: 0;
+}
+
+/* Summary sentence + Next-run chip shown only in the collapsed state so
+   the user can see the schedule and next fire time without expanding. */
+.trigger-card-collapsed-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(15, 23, 42, 0.06);
+    font-size: 12px;
+    color: #475569;
+}
+
+.trigger-card-collapsed-schedule {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #0f172a;
+    font-weight: 500;
+}
+
+.trigger-card-collapsed-next {
+    margin-left: auto;
+    color: #64748b;
+    font-size: 11.5px;
+}
+
+.trigger-card-collapsed-next strong {
+    color: #334155;
+    font-weight: 600;
+}
+
+/* -- TriggerPicker (the schedule panel) ---------------------- */
+.trigger-picker {
+    background: #f8fafc;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.trigger-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed rgba(15, 23, 42, 0.08);
+}
+
+.trigger-picker-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #0f172a;
+}
+
+.trigger-picker-summary svg {
+    color: #4f46e5;
+}
+
+.trigger-picker-remove {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.trigger-picker-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.trigger-picker-tabs {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-bottom: 12px;
+    padding: 3px;
+    background: rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 10px;
+}
+
+.trigger-picker-tab {
+    padding: 5px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.trigger-picker-tab:hover {
+    color: #0f172a;
+    background: rgba(15, 23, 42, 0.04);
+}
+
+.trigger-picker-tab.is-active {
+    background: #ffffff;
+    color: #4f46e5;
+    box-shadow:
+        0 1px 2px rgba(17, 24, 39, 0.06),
+        0 0 0 1px rgba(99, 102, 241, 0.25);
+}
+
+.trigger-picker-tab.is-active:hover {
+    background: #ffffff;
+}
+
+.trigger-picker-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.trigger-picker-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #475569;
+}
+
+.trigger-picker-fields-row {
+    display: flex;
+    gap: 12px;
+}
+
+.trigger-picker-fields-row .trigger-picker-field {
+    flex: 1;
+}
+
+.trigger-picker-label {
+    min-width: 32px;
+    font-weight: 500;
+    color: #475569;
+}
+
+.trigger-picker-input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 7px;
+    font-size: 13px;
+    color: #0f172a;
+    background: #ffffff;
+    font-family: inherit;
+}
+
+.trigger-picker-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.trigger-picker-input--narrow {
+    flex: 0 0 80px;
+}
+
+.trigger-picker-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    margin: 4px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.trigger-picker-hint::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #cbd5e1;
+}
+
+/* -- Per-card input message + meta --------------------------- */
+.trigger-card-input-label {
+    display: block;
+    margin-top: 12px;
+    font-size: 11.5px;
+    color: #64748b;
+}
+
+.trigger-card-input-label > span {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #475569;
+}
+
+.trigger-card-input {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #0f172a;
+    background: #fafafa;
+    resize: vertical;
+    font-family: inherit;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.trigger-card-input::placeholder {
+    color: #94a3b8;
+}
+
+.trigger-card-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.trigger-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(15, 23, 42, 0.08);
+    font-size: 11px;
+    color: #64748b;
+}
+
+.trigger-card-meta strong {
+    color: #334155;
+    font-weight: 600;
+}
+
+.trigger-card-meta .status-success { color: #16a34a; }
+.trigger-card-meta .status-error   { color: #dc2626; }
+
+.trigger-card-error {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 6px;
+    color: #b91c1c;
+    font-size: 12px;
+}
+
+/* -- Draft Save / Cancel ------------------------------------ */
+.trigger-draft-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.trigger-draft-cancel,
+.trigger-draft-save {
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+}
+
+.trigger-draft-cancel {
+    background: transparent;
+    border-color: rgba(15, 23, 42, 0.15);
+    color: #475569;
+}
+
+.trigger-draft-cancel:hover {
+    background: rgba(15, 23, 42, 0.04);
+}
+
+.trigger-draft-save {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #ffffff;
+    border-color: transparent;
+}
+
+.trigger-draft-save:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4338ca, #6d28d9);
+    color: #ffffff;
+}
+
+.trigger-draft-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* -- Execution history -------------------------------------- */
+.trigger-history {
+    margin-top: 10px;
+    border-top: 1px dashed rgba(15, 23, 42, 0.06);
+    padding-top: 10px;
+}
+
+.trigger-history-empty {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 6px 0;
+}
+
+.trigger-history-row {
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    background: #fbfbfd;
+    overflow: hidden;
+}
+
+.trigger-history-row summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    list-style: none;
+    color: #334155;
+}
+
+.trigger-history-row summary::-webkit-details-marker {
+    display: none;
+}
+
+.trigger-history-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.trigger-history-status.status-success { background: #16a34a; }
+.trigger-history-status.status-error   { background: #dc2626; }
+.trigger-history-status.status-running { background: #6366f1; }
+
+.trigger-history-duration {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.trigger-history-body {
+    padding: 8px 12px 12px;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.trigger-history-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin: 6px 0 4px;
+}
+
+.trigger-history-pre {
+    background: #f1f5f9;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 0;
+    font-size: 12px;
+    color: #0f172a;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow: auto;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+.trigger-history-error {
+    color: #b91c1c;
+    background: rgba(239, 68, 68, 0.06);
+}
+
+/* ============================================================
+   Notification bell + toast + modal (global)
+   ============================================================ */
+
+/* Global action bar — holds integrations + bell side by side */
+.global-action-bar {
+    position: fixed;
+    top: 16px;
+    right: 18px;
+    z-index: 9050;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trigger-bell-wrap {
+    position: relative;
+    top: auto;
+    right: auto;
+    z-index: auto;
+}
+
+.trigger-bell-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #475569;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.trigger-bell-btn:hover {
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.trigger-bell-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.trigger-bell-popover {
+    position: absolute;
+    top: 46px;
+    right: 0;
+    width: 340px;
+    max-height: 460px;
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.trigger-bell-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.trigger-bell-popover-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.trigger-bell-clear {
+    background: transparent;
+    border: none;
+    color: #4f46e5;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+}
+
+.trigger-bell-clear:hover {
+    text-decoration: underline;
+}
+
+.trigger-bell-clear--danger {
+    color: #dc2626;
+}
+
+.trigger-bell-clear--danger:hover {
+    color: #b91c1c;
+}
+
+/* Per-row delete (×) button */
+.trigger-bell-item-delete {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.trigger-bell-item:hover .trigger-bell-item-delete {
+    opacity: 1;
+}
+
+.trigger-bell-item-delete:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+}
+
+/* When both the unread dot AND the × need a slot, push the × to the very end */
+.trigger-bell-unread-dot + .trigger-bell-item-delete {
+    margin-left: 8px;
+}
+
+.trigger-bell-empty {
+    padding: 22px 14px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.trigger-bell-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+}
+
+.trigger-bell-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.trigger-bell-item:hover {
+    background: #f8fafc;
+}
+
+.trigger-bell-item.is-seen {
+    opacity: 0.7;
+}
+
+.trigger-bell-item.is-seen strong {
+    font-weight: 500;
+}
+
+.trigger-bell-unread-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #6366f1;
+    margin-left: auto;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.trigger-bell-item-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #0f172a;
+}
+
+.trigger-bell-item-kind {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.trigger-bell-item-meta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #64748b;
+}
+
+/* Scoped to trigger notification context to avoid colliding with the
+   4px .status-dot used on workflow/agent cards in index.css */
+.trigger-status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #94a3b8;
+    flex-shrink: 0;
+}
+
+.trigger-status-dot.status-success { background: #16a34a; }
+.trigger-status-dot.status-error   { background: #dc2626; }
+.trigger-status-dot.status-running { background: #6366f1; }
+
+/* -- Toast --------------------------------------------------- */
+.trigger-toast-stack {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9100;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.trigger-toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 320px;
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-left: 4px solid #16a34a;
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
+    animation: trigger-toast-in 0.25s ease;
+}
+
+.trigger-toast.status-error {
+    border-left-color: #dc2626;
+}
+
+@keyframes trigger-toast-in {
+    from { transform: translateY(10px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+.trigger-toast-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(22, 163, 74, 0.12);
+    color: #16a34a;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.trigger-toast.status-error .trigger-toast-icon {
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
+}
+
+.trigger-toast-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.trigger-toast-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.trigger-toast-meta {
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: #64748b;
+}
+
+.trigger-toast-view {
+    margin-top: 6px;
+    background: transparent;
+    border: none;
+    color: #4f46e5;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+}
+
+.trigger-toast-view:hover {
+    text-decoration: underline;
+}
+
+.trigger-toast-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px;
+    margin-left: 4px;
+}
+
+.trigger-toast-close:hover { color: #0f172a; }
+
+/* -- Modal --------------------------------------------------- */
+.trigger-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9200;
+    padding: 24px;
+}
+
+.trigger-modal {
+    width: min(640px, 100%);
+    max-height: 80vh;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.trigger-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.trigger-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #0f172a;
+}
+
+.trigger-modal-sub {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.trigger-modal-sub .status-success { color: #16a34a; font-weight: 600; }
+.trigger-modal-sub .status-error   { color: #dc2626; font-weight: 600; }
+
+.trigger-modal-close {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.trigger-modal-close:hover {
+    background: rgba(15, 23, 42, 0.05);
+    color: #0f172a;
+}
+
+.trigger-modal-body {
+    overflow-y: auto;
+    padding: 16px 18px 18px;
+}
+
+.trigger-modal-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #64748b;
+    margin: 10px 0 6px;
+}
+
+.trigger-modal-pre {
+    background: #f8fafc;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 0;
+    font-size: 13px;
+    color: #0f172a;
+    white-space: pre-wrap;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+.trigger-modal-error {
+    color: #b91c1c;
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* Per-section Copy button inside the detail modal */
+.trigger-modal-block {
+    margin-bottom: 14px;
+}
+
+.trigger-modal-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 14px 0 6px;
+}
+
+.trigger-modal-block-header .trigger-modal-label {
+    margin: 0;
+}
+
+.trigger-modal-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    background: #f1f5f9;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 6px;
+    color: #475569;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.trigger-modal-copy:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+/* Download chips for documents produced by a triggered run. */
+.trigger-modal-files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.trigger-modal-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    max-width: 100%;
+    padding: 7px 12px;
+    background: #eff6ff;
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 8px;
+    color: #1d4ed8;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.trigger-modal-file:hover {
+    background: #dbeafe;
+    border-color: rgba(37, 99, 235, 0.4);
+}
+
+.trigger-modal-file:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.trigger-modal-file span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trigger-modal-file-status {
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+.trigger-modal-file-status.is-gone {
+    color: #b45309;
+}
+
+.trigger-modal-file-status.is-error {
+    color: #b91c1c;
+}
+
+/* TriggerModal — schedule-editor variant. Sized tightly for a single
+   trigger editor; the body scrolls if multiple triggers exist. */
+.trigger-modal--editor {
+    width: min(560px, 100%);
+    max-height: 86vh;
+}
+
+/* Editor variant of the modal header places a circular icon to the left
+   of the title block so the title sits on a single visual line instead of
+   stacking a lone clock above the text. */
+.trigger-modal-header--editor {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+}
+
+.trigger-modal-header-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(99, 102, 241, 0.04));
+    color: #4f46e5;
+    border: 1px solid rgba(99, 102, 241, 0.18);
+}
+
+.trigger-modal-header--editor .trigger-modal-header-text h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.trigger-modal-header--editor .trigger-modal-sub {
+    margin-top: 2px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* When TriggerSection lives inside TriggerModal, drop the outer divider
+   padding — the modal body already supplies the surrounding chrome. The
+   inner Triggers heading is suppressed in JSX (variant="modal"), so the
+   first child should hug the top of the body. */
+.trigger-section--modal {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+/* Inside the modal the first trigger card needs no extra top margin — the
+   modal body's padding already provides breathing room. */
+.trigger-section--modal > .trigger-card:first-of-type,
+.trigger-section--modal > .trigger-card.is-draft:first-child {
+    margin-top: 0;
+}
+
+/* When the modal hosts multiple stacked triggers, add a clean separator
+   between each one (instead of relying on each card's individual border
+   that we stripped above). */
+.trigger-section--modal > .trigger-card + .trigger-card {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed rgba(15, 23, 42, 0.08);
+}
+
+/* "Add another trigger" button gets a little more breathing room inside
+   the modal so it doesn't crash into the card above. */
+.trigger-section--modal > .trigger-add-btn {
+    margin-top: 16px;
+}
+
+/* ============================================================
+   Agent Factory — post-deploy "set a trigger" step
+   Rendered inside AgentFactoryChat after /agent-factory/confirm
+   succeeds. Takes over the bottom of the modal so the user can
+   schedule the new agent before closing.
+   ============================================================ */
+.agent-factory-trigger-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+    background: linear-gradient(180deg, #f8fafc, #ffffff);
+}
+
+.agent-factory-trigger-success {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 18px;
+    background: rgba(22, 163, 74, 0.06);
+    border-bottom: 1px solid rgba(22, 163, 74, 0.15);
+    flex-shrink: 0;
+}
+
+.agent-factory-trigger-success-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(22, 163, 74, 0.18);
+    color: #16a34a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.agent-factory-trigger-success-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.agent-factory-trigger-success-sub {
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: #64748b;
+}
+
+.agent-factory-trigger-success-sub em {
+    color: #4f46e5;
+    font-style: normal;
+    font-weight: 500;
+}
+
+.agent-factory-trigger-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px 18px 6px;
+}
+
+.agent-factory-trigger-scroll .trigger-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+/* Inside the factory the section heading was rendered as `<h2>` which
+   inherits the page-level large-heading styling. Override so the picker
+   header is compact and matches the surrounding card chrome. */
+.agent-factory-trigger-scroll .agent-config-section-title {
+    font-size: 13px;
+    margin: 0 0 6px;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.agent-factory-trigger-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 18px;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+    background: #ffffff;
+    flex-shrink: 0;
+}
+
+.agent-factory-trigger-finish {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 18px;
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.agent-factory-trigger-finish:hover {
+    background: #4338ca;
+}
+
+/* Sidebar trigger (clock) button on agent rows */
+.agent-sidebar-trigger-btn svg {
+    color: #4f46e5;
+}
+
+.agent-sidebar-actions .agent-sidebar-trigger-btn:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+.agent-sidebar-actions .agent-sidebar-trigger-btn:hover svg {
+    color: #4338ca;
+}
+
+/* AiNxt indigo/violet trigger alignment */
+.trigger-add-btn,
+.agent-factory-trigger-finish,
+.trigger-draft-save {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border-color: transparent;
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.trigger-add-btn:hover,
+.agent-factory-trigger-finish:hover,
+.trigger-draft-save:hover:not(:disabled) {
+    opacity: 0.7;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+
+.trigger-card.is-draft,
+.trigger-section-disabled {
+    border-color: #c7d2fe;
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.trigger-card-name:focus,
+.trigger-picker-input:focus,
+.trigger-card-input:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.10);
+}
+
+.trigger-card-history-btn:hover,
+.trigger-picker-remove:hover,
+.agent-sidebar-actions .agent-sidebar-trigger-btn:hover {
+    background: #eef2ff;
+    color: #4f46e5;
+}
+
+.trigger-picker-tab.is-active {
+    background: #eef2ff;
+    color: #4338ca;
+    font-weight: 600;
+}
+
+.trigger-picker-tab:hover {
+    background: #eef2ff;
+    color: #4f46e5;
+}
+
+.trigger-draft-cancel:hover {
+    background: #eef2ff;
+    color: #4f46e5;
+}
+
+/* ============================================================
+   Running-workflow toast (dashboard)
+   Surfaced by RunningWorkflowToast.jsx while a workflow is
+   still streaming in the editor. Stacks above the trigger
+   toasts so they don't fight for the same anchor.
+   ============================================================ */
+.running-workflow-toast-stack {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9150; /* above trigger-toast-stack (9100), below modals (9200) */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.running-workflow-toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 340px;
+    background: #ffffff;
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    border-left: 4px solid #6366f1;
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+    animation: running-workflow-toast-in 0.25s ease;
+}
+
+@keyframes running-workflow-toast-in {
+    from { transform: translateY(10px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+.running-workflow-toast-icon {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Pulsing halo behind the play glyph — telegraphs "still running". */
+.running-workflow-toast-pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.4);
+    animation: running-workflow-toast-pulse 1.6s ease-out infinite;
+}
+
+@keyframes running-workflow-toast-pulse {
+    0%   { transform: scale(0.6); opacity: 0.55; }
+    80%  { transform: scale(1.4); opacity: 0; }
+    100% { transform: scale(1.4); opacity: 0; }
+}
+
+.running-workflow-toast-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.running-workflow-toast-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.running-workflow-toast-meta {
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: #64748b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.running-workflow-toast-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #4f46e5;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+}
+
+.running-workflow-toast-open:hover {
+    background: #4338ca;
+}
+
+.running-workflow-toast-open:focus-visible {
+    outline: 2px solid #c7d2fe;
+    outline-offset: 2px;
+}
+
+/* ============================================================
+   Imminent-fire confirmation dialog
+   Raised when the user clicks Edit within 5 minutes of the next
+   scheduled fire so they can confirm they really want to change
+   the schedule now instead of letting the trigger run.
+   ============================================================ */
+.trigger-imminent-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 9300;
+}
+
+.trigger-imminent-modal {
+    width: min(440px, 100%);
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 22px 24px;
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.28);
+    border-top: 4px solid #f59e0b;
+}
+
+.trigger-imminent-modal h3 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trigger-imminent-modal h3::before {
+    content: '⏱';
+    display: inline-block;
+    font-size: 16px;
+}
+
+.trigger-imminent-modal p {
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: #334155;
+    line-height: 1.5;
+}
+
+.trigger-imminent-modal strong {
+    color: #92400e;
+    font-weight: 600;
+}
+
+.trigger-imminent-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.trigger-imminent-cancel,
+.trigger-imminent-confirm {
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.trigger-imminent-cancel {
+    background: transparent;
+    border-color: rgba(15, 23, 42, 0.15);
+    color: #475569;
+}
+
+.trigger-imminent-cancel:hover {
+    background: rgba(15, 23, 42, 0.04);
+    color: #0f172a;
+}
+
+.trigger-imminent-confirm {
+    background: #f59e0b;
+    color: #ffffff;
+}
+
+.trigger-imminent-confirm:hover {
+    background: #d97706;
+}
+
+.trigger-imminent-confirm:focus-visible,
+.trigger-imminent-cancel:focus-visible {
+    outline: 2px solid rgba(99, 102, 241, 0.4);
+    outline-offset: 1px;
+}

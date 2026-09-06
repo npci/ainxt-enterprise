@@ -1,0 +1,29 @@
+{
+  "$comment": "Pins the ainxt CLI embedded in the desktop app. Bump `ref` and `download_base` when the CLI version changes.",
+  "ref": "v1.0.0",
+  "repo": "npci/ainxt-cli",
+  "download_base": "https://github.com/npci/ainxt-cli/releases/download/v1.0.0",
+  "minCliVersion": "1.0.0",
+  "assets": {
+    "ainxt-windows-x64.exe": {
+      "remote": "ainxt-1.0.0-win32-x86_64.exe",
+      "sha256": ""
+    },
+    "ainxt-macos-arm64": {
+      "remote": "ainxt-1.0.0-darwin-aarch64",
+      "sha256": ""
+    },
+    "ainxt-macos-x64": {
+      "remote": "ainxt-1.0.0-darwin-x86_64",
+      "sha256": ""
+    },
+    "ainxt-linux-x64": {
+      "remote": "ainxt-1.0.0-linux-x86_64",
+      "sha256": ""
+    },
+    "ainxt-linux-arm64": {
+      "remote": "ainxt-1.0.0-linux-aarch64",
+      "sha256": ""
+    }
+  }
+}

@@ -1,0 +1,143 @@
+groups:
+
+  # ── Platform Health ──────────────────────────────────────────────────────────
+  - name: ainxt_platform
+    rules:
+
+      - alert: HighErrorRate
+        # ainxt_errors_total is a Counter in core/telemetry.py
+        expr: rate(ainxt_errors_total_total[5m]) > 0.083
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Platform error rate > 5%"
+          description: "Error rate {{ $value | humanizePercentage }} over last 5m — investigate gateway logs."
+
+      - alert: HighP95Latency
+        # ainxt_request_latency_seconds is a Histogram in core/telemetry.py
+        expr: histogram_quantile(0.95, rate(ainxt_request_latency_seconds_bucket[5m])) > 8
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "p95 request latency > 8s"
+          description: "p95 latency is {{ $value | humanizeDuration }} — may indicate model timeout or queue backup."
+
+      - alert: PlatformDown
+        # Platform is unreachable — Prometheus itself can't scrape it
+        expr: up{job="ainxt-platform"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Platform gateway is DOWN"
+          description: "Prometheus cannot reach the platform gateway metrics endpoint (configure GATEWAY_HOST in prometheus.yml)"
+
+  # ── AiNxt-Specific Business Alerts ───────────────────────────────────────────
+  - name: ainxt_platform_agents
+    rules:
+
+      - alert: AgentFailureSpike
+        # ainxt_agent_failure_total is a Counter in core/telemetry.py
+        expr: increase(ainxt_agent_failure_total[10m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Agent failure spike — {{ $value }} failures in 10 minutes"
+          description: "Possible compliance block storm, model outage, or SDLC language detection failure."
+
+      - alert: ComplianceBlockSpike
+        # ainxt_compliance_blocks_total is a Counter in core/telemetry.py
+        expr: increase(ainxt_compliance_blocks_total[10m]) > 20
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Compliance block spike — {{ $value }} blocks in 10 minutes"
+          description: "High PII/PAN detection rate. May be legitimate (bulk test) or a scanning attempt."
+
+      - alert: ModelCostSpike
+        # ainxt_model_cost_usd_total is a Counter with model label in core/telemetry.py
+        expr: increase(ainxt_model_cost_usd_total[1h]) > 50
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Model cost spike — ${{ $value | humanize }} in last hour"
+          description: "Abnormal spend rate. Check for runaway agents or budget enforcement gap."
+
+      - alert: ZeroRequestsWindow
+        # No requests in 15 minutes during business hours — likely a silent crash
+        expr: rate(ainxt_requests_total[15m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Zero requests for 15 minutes"
+          description: "Platform may be silently broken — no /ask traffic. Check worker queues."
+
+      - alert: CacheHitRateDrop
+        # Cache hit rate drops below 10% — retrieval is being bypassed or busted
+        expr: |
+          rate(ainxt_cache_hits_total[30m]) /
+          (rate(ainxt_requests_total[30m]) + 0.001) < 0.10
+        for: 30m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Cache hit rate dropped below 10%"
+          description: "Hit rate {{ $value | humanizePercentage }}. ACL cache key change or Redis issue."
+
+  # ── System Infrastructure ────────────────────────────────────────────────────
+  - name: ainxt_infra
+    rules:
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU at {{ $value | humanize }}%"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory at {{ $value | humanize }}% — risk of OOM on embed svc or workers."
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes) * 100 < 15
+        for: 5m
+        labels:
+          severity: critical
+          team: infra
+        annotations:
+          summary: "Low disk on {{ $labels.instance }}:{{ $labels.mountpoint }}"
+          description: "Only {{ $value | humanize }}% disk remaining — pgvector index will fail."
+
+      - alert: NodeDown
+        expr: up{job="node-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: infra
+        annotations:
+          summary: "Node exporter down on {{ $labels.instance }}"
+          description: "Server unreachable for > 1 minute."

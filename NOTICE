@@ -1,0 +1,39 @@
+AiNxt Platform
+Copyright 2026 National Payments Corporation of India
+
+This product is licensed under the MIT License.
+See the LICENSE file in the root of this repository for the full text.
+
+For the complete third-party dependency inventory with versions and licenses in
+table format, see THIRD-PARTY-NOTICES.md. For full text of the non-permissive
+licenses referenced there: LGPL-3.0 at https://www.gnu.org/licenses/lgpl-3.0.txt,
+MPL-2.0 at https://www.mozilla.org/en-US/MPL/2.0/.
+
+---
+
+The MIT License is a copyright licence. It grants no rights in trade names,
+trademarks, service marks or product names, and — unlike Apache-2.0, which
+addresses the point explicitly in its Section 6 — it does not mention marks at
+all. The position is therefore stated plainly here so that adopters do not have
+to infer it from an omission.
+
+"AiNxt", the AiNxt name, and the AiNxt logos and marks -- including any brand
+imagery committed under `assets/`, `ai-ui/public/` and `desktop/build/` -- identify the origin
+of this software. The copyright grant lets you use and redistribute those files
+as part of this software; it does not give you the right to use the marks as your
+own brand.
+
+You MAY:
+  * redistribute the marks unmodified as part of an unmodified distribution of
+    this software; and
+  * use the name nominatively -- to describe accurately what your software is
+    built on, integrates with, or is derived from.
+
+You MAY NOT, without separate written permission:
+  * use the marks in a way that suggests your fork, product or service is the
+    official one, or is endorsed by or affiliated with this project; or
+  * use the marks as, or as part of, your own product or organisation name.
+
+If you fork this project and distribute it under your own name, replace the brand
+assets with your own. The code is yours to use under the MIT License; the marks
+identify whose project it is.

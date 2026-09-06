@@ -1,0 +1,71 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# AiNxt doc-sandbox — OVERLAY image (no network required)
+#
+# For locked-down / air-gapped hosts where the main Dockerfile's apt/npm/pip
+# layers cannot reach the internet. This starts FROM the already-built
+# ainxt-doc-sandbox:latest (which already carries LibreOffice, node, python,
+# docx, pptxgenjs, openpyxl, poppler, pandoc, fonts) and ONLY adds the three
+# composition wrappers on top — so no base packages are re-downloaded.
+#
+# Build (from repo root):
+#   bash docker/doc-sandbox/build-overlay.sh
+#
+# Prereqs: an existing `ainxt-doc-sandbox:latest` on the host (docker images).
+#
+# BASE_IMAGE is the image to layer on top of. build-overlay.sh snapshots the
+# current base as ainxt-doc-sandbox:base-prewrappers and passes it here, so
+# re-running the overlay always builds on the ORIGINAL base (never on a
+# previously-overlaid image), keeping the result idempotent.
+# ──────────────────────────────────────────────────────────────────────────────
+ARG BASE_IMAGE=ainxt-doc-sandbox:latest
+FROM ${BASE_IMAGE}
+
+USER root
+
+# Brand assets (harmless if the .md is dockerignored — only a logo png matters at
+# runtime, and its use is existence-guarded in the wrappers).
+COPY skills/ainxt_doc_craft/brand/ /opt/ainxt-brand/
+
+# JS wrappers → installed globally so require('ainxt-doc') / require('ainxt-deck')
+# resolve identically to their peers (docx / pptxgenjs), regardless of cwd.
+# --offline: never touch the npm registry (the packages have no deps; their peers
+# are already global in the base image). Fails the build early if unresolved.
+#
+# `npm install -g <local-dir>` SYMLINKS the global package back to the source dir,
+# so require() ultimately reads /opt/ainxt-lib/.../index.js. Those files are COPY'd
+# as root; the sandbox runs as uid 10001, so the tree MUST be world-readable or
+# require() fails with EACCES at runtime. chmod a+rX makes dirs traversable and
+# files readable for everyone, without granting write. Verify AS the sandbox user.
+COPY skills/ainxt_doc_craft/lib/ainxt-deck /opt/ainxt-lib/ainxt-deck
+COPY skills/ainxt_doc_craft/lib/ainxt-doc  /opt/ainxt-lib/ainxt-doc
+RUN npm install -g --offline --no-save --omit=dev /opt/ainxt-lib/ainxt-deck /opt/ainxt-lib/ainxt-doc \
+    && chmod -R a+rX /opt/ainxt-lib \
+    && node -e "require('ainxt-deck'); require('ainxt-doc')"
+
+# Python wrapper → on PYTHONPATH.
+COPY skills/ainxt_doc_craft/lib/ainxt_sheet.py /opt/ainxt-lib/ainxt_sheet.py
+# ── Document identity ─────────────────────────────────────────────────────────
+# Baked in at IMAGE-BUILD time, not read from the host .env at run time: the doc
+# sandbox is started with no environment passed in (see sandbox/docker_executor.py),
+# so a runtime-only setting here would be silently inert.
+#
+#   docker build --build-arg DOC_BRAND_NAME="Your Org" ...
+#
+# Empty default is deliberate. Generated documents carry the adopter's brand or
+# none -- never this project's.
+ARG DOC_BRAND_NAME=""
+ARG DOC_BRAND_MARK=/opt/ainxt-brand/brand-mark.png
+ENV DOC_BRAND_NAME=${DOC_BRAND_NAME} \
+    DOC_BRAND_MARK=${DOC_BRAND_MARK}
+
+ENV PYTHONPATH=/opt/ainxt-lib
+
+RUN mkdir -p /opt/ainxt-brand /opt/ainxt-lib \
+    && chmod -R a+rX /opt/ainxt-brand /opt/ainxt-lib \
+    && chown -R 10001:10001 /opt/ainxt-brand /opt/ainxt-lib 2>/dev/null || true
+
+# Restore the sandbox runtime posture from the base image.
+USER 10001
+WORKDIR /work
+ENV NODE_PATH=/usr/local/lib/node_modules
+CMD ["sleep", "infinity"]

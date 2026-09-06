@@ -1,0 +1,4 @@
+numPages=1
+--- page 1 ---
+Before image.
+After image.

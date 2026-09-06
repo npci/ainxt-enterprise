@@ -1,0 +1,186 @@
+# AiNxt runtime dependencies for Ubuntu server deployments.
+# Keep this file to direct/runtime dependencies only; pip resolves transitive packages.
+
+# PyTorch's CPU-only wheel index. This platform does not use GPU/CUDA
+# acceleration. On Linux (this platform's Docker/deployment target),
+# `docling` (below) transitively pulls the default GPU wheel of torch,
+# which depends on NVIDIA's proprietary-licensed cuda-bindings/cuda-toolkit/
+# nvidia-*-cu13 packages (torch's Requires-Dist entries for these are gated
+# by `platform_system == "Linux"` — confirmed via wheel METADATA). The
+# Linux-only pin below avoids that. Windows/macOS installs (local dev) never
+# pulled those NVIDIA packages in the first place, since the same platform
+# marker excludes them there — so no pin is needed or applied on those
+# platforms; `docling`'s own torch requirement resolves normally. See
+# THIRD-PARTY-NOTICES.md §1.5b.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# ── Web/API runtime ─────────────────────────────────────────────
+fastapi==0.136.1
+uvicorn==0.46.0
+gunicorn==26.0.0
+python-multipart==0.0.31
+python-dotenv==1.2.2
+pydantic==2.13.4
+pydantic-settings==2.14.2
+anyio==4.13.0
+httpx==0.28.1
+requests==2.33.1
+Jinja2==3.1.6
+slowapi==0.1.9
+starlette==1.3.1
+aiohttp==3.14.3
+aiohttp-retry==2.9.1
+orjson==3.11.9
+
+# ── Auth, crypto, and compliance ────────────────────────────────
+PyJWT==2.13.0
+passlib==1.7.4
+bcrypt==4.0.1
+cryptography==50.0.0
+defusedxml==0.7.1               # PSF-2.0 (Python Software Foundation License — permissive)
+# py-hsm-client==1.0.0  ← REMOVED from core deps (internal/unpublished package).
+# HSM support has NO pip extra: py-hsm-client is unpublished, so an extra would
+# fail to resolve. Install it from your vendor directly if you need HSM.
+# Without it, the platform boots using BASE:-prefixed keys (plain base64 DEKs).
+# See: pyproject.toml (lines 15-19) and core/ckms/hsm_gateway.py
+pycryptodome==3.23.0
+
+# ── Persistence, queues, and integrations ───────────────────────
+SQLAlchemy==2.0.52
+psycopg2-binary==2.9.12         # LGPL-3.0-or-later, OpenSSL linking exception
+#                                 (unmodified library use; pip fetches it from
+#                                 PyPI, so no LGPL code is redistributed here)
+psycopg[binary]>=3.1.0
+psycopg-pool>=3.2.0
+pgvector==0.4.2
+redis==7.1.1
+rq==2.7.0
+apscheduler>=3.10.0,<4.0.0
+croniter==6.2.2
+kafka-python==2.3.2
+# ldap3==2.9.1  <- latest available on PyPI (2.9.1); MOVED to
+#               requirements-ldap.txt (LGPL-3.0-only), so a default install
+#               carries no LGPL-3.0.  LDAP auth is disabled without it and
+#               the app starts normally.
+#               Enable: pip install -r requirements-ldap.txt
+minio==7.2.20
+docker==7.1.0
+
+# ── LLM gateways and model services ─────────────────────────────
+anthropic==0.100.0
+openai==2.36.0
+google-genai==1.75.0
+google-cloud-bigquery>=3.13.0,<4.0.0
+onnxruntime==1.26.0
+tokenizers>=0.21,<1.0
+numpy>=1.26.4,<2.0
+scipy==1.17.1                   # BSD-3-Clause
+scikit-learn==1.8.0
+tiktoken==0.12.0
+ollama==0.6.1
+
+# ── RAG, indexing, and SDLC analysis ────────────────────────────
+# GitPython: was never actually declared here despite three call sites
+# depending on it at module import time (workers/index_worker.py,
+# workers/codewiki_worker.py, routers/codewiki_router.py's regenerate) —
+# `from git import Repo` / `from git.cmd import Git` raised
+# ModuleNotFoundError the moment any of those code paths actually ran
+# in-process (confirmed live: POST /codewiki/requests/{id}/approve 500'd
+# on this exact import). >=3.1.40 is relied on elsewhere in this codebase
+# for its automatic credential redaction in GitCommandError messages.
+GitPython>=3.1.40
+networkx==3.6.1
+lxml==6.1.0
+beautifulsoup4==4.14.3
+PyYAML==6.0.3
+tabulate>=0.9.0
+tenacity==9.1.4
+
+# ── Document parsing and generation ─────────────────────────────
+# ── PDF engines ──────────────────────────────────────────────────────────────
+# PDF access goes through core/pdf_backend, which selects the pdfium engine
+# (pypdfium2 + pypdf + pdfplumber + markitdown — all permissive: BSD-3-Clause /
+# Apache-2.0 / MIT).
+pypdfium2==4.30.0
+pypdf==6.16.1
+pillow==12.3.0
+pandas==2.3.3
+openpyxl==3.1.5
+xlrd==2.0.2
+python-docx==1.2.0
+python-pptx==1.0.2
+striprtf==0.0.26
+reportlab==4.5.1
+python-dateutil==2.9.0.post0    # Apache-2.0 AND BSD-3-Clause
+markitdown[pdf,pptx,docx,xlsx]>=0.0.1a3
+matplotlib==3.10.9
+markdown==3.10.2
+# docling — ML layout/table parser (DocLayNet + TableFormer) used by
+# core/docling_parser.py and services/embed_svc/parser.py when
+# USE_DOCLING_PARSER=1. Previously used by the code but never pinned here.
+# Floor-pinned, not exact, since the project moves fast and newer releases
+# are expected to keep working.
+docling>=2.15,<3.0
+# Pinned exact + CPU-only build so docling's own unconstrained `torch`
+# requirement resolves to these instead of the default CUDA-enabled Linux
+# wheel — see the --extra-index-url note above. Linux-only marker: torch's
+# nvidia-/cuda- Requires-Dist entries are themselves conditioned on
+# `platform_system == "Linux"`, so Windows/macOS installs never pulled them
+# in the first place — no need to (and no matching +cpu wheel exists to)
+# constrain those platforms. This keeps local dev on Mac/Windows unaffected.
+torch==2.14.0+cpu; sys_platform == "linux"
+torchvision==0.29.0+cpu; sys_platform == "linux"
+
+# ── Build Studio / MCP ──────────────────────────────────────────
+mcp>=1.28.1
+
+# ── Observability ───────────────────────────────────────────────
+prometheus_client==0.25.0
+structlog==25.5.0
+# Development
+pytest>=9.0.3
+pytest-asyncio>=0.21.0
+
+# ── ABStudio OCR pipeline (app/core/ocr_pipeline.py) ─────────
+# Powers attachment uploads on the Workflow chat, Agent chat, and KB
+# upload flows. Each lib is wrapped in `try / except ImportError` in
+# the pipeline so a missing optional dep degrades to a warning rather
+# than a hard failure.
+#
+# pdfplumber — Pass 2a: pipe-table extraction from born-digital PDFs.
+pdfplumber>=0.11
+# camelot-py — Pass 2b/2c: lattice + stream table extraction for unstructured
+# PDFs (forms, bank statements, invoices). Renders via pypdfium2, so NO
+# Ghostscript / poppler system packages are required. (The `[base]` extra was
+# dropped upstream in camelot-py 1.0.0 and is a no-op warning on anything this
+# range resolves to; it never pulled PyMuPDF, contrary to an earlier note here.)
+camelot-py>=0.11
+# Pillow — image normalization (EXIF orient, RGB convert, deskew) for
+# standalone PNG/JPG/TIFF/BMP/WEBP uploads. Already pinned above
+# (pillow==12.3.0).
+# Page rasterisation and embedded-image extraction for core.pdf_ocr go through
+# core.pdf_backend (page.get_pixmap / page.get_images / doc.extract_image), so
+# they follow PDF_BACKEND and need no engine pinned here beyond pypdfium2.
+# rapidocr-onnxruntime — local ONNX OCR engine. Used for scanned PDFs,
+# embedded raster images, and standalone image uploads. CPU-only,
+# no GPU required.
+rapidocr-onnxruntime>=1.3
+
+# ── PaddleOCR — NOT installed by default ────────────────────────
+# Moved to requirements-ocr.txt. It is a genuinely optional second OCR engine:
+# rapidocr-onnxruntime above already handles scanned PDFs, embedded images and
+# image uploads on CPU, and every paddle import in this codebase is lazy and
+# guarded (core/paddle_ocr_model.py, core/paddle_ocr_subprocess.py), so the
+# platform boots and does OCR without it.
+#
+# Why it is not here: paddlepaddle adds ~353 MB, and the unpinned range made pip
+# backtrack through 55 paddle* versions — over 20 minutes on a cold install —
+# because newer paddleocr 3.x pulls the paddlex tree.
+#
+# To enable it:
+#     Docker  ./install.sh --with-ocr
+#             (or WITH_OCR=1 docker compose up -d --build gateway)
+#     Native  pip install -r requirements-ocr.txt
+
+# ── Timezone ────────────────────────────────────────────────────
+tzlocal==5.4.4

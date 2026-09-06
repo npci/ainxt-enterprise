@@ -1,0 +1,12 @@
+# Optional LDAP authentication support.
+#
+# ldap3 is LGPL-3.0-only. It is isolated in this file, separate from
+# requirements.txt, so that a default install of the platform does not pull
+# in an LGPL-licensed dependency. LDAP auth is disabled without it and the
+# application starts normally (see auth/ldap_handler.py).
+#
+# Enable with: pip install -r requirements-ldap.txt
+#
+# See THIRD-PARTY-NOTICES.md Section 1.5 for the license notice.
+
+ldap3==2.9.1

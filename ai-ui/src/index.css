@@ -1,0 +1,255 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Mermaid & table tweaks added for CodeWiki docs */
+/* Reduce extra vertical padding around tables */
+.prose table { margin-top: 0.25rem; margin-bottom: 0.25rem; }
+.prose thead th { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.prose tbody td { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+
+/* Mermaid diagrams: make SVG responsive and remove code-block header styling */
+.mermaid-wrapper, .prose .mermaid { width: 100%; overflow-x: auto; }
+.mermaid svg, .mermaid-wrapper svg { width: 100% !important; height: auto !important; max-width: 100% !important; font-size: 14px !important; }
+.mermaid-wrapper svg text { font-size: 14px !important; }
+
+/* Responsive treatment: constrain very tall diagrams but allow wide diagrams to
+   scroll horizontally while keeping font readable. */
+.mermaid-wrapper { max-width: 100%; }
+.mermaid-inner { width: 100%; overflow: auto; }
+.mermaid-inner > svg { display: block; max-height: 80vh; height: auto !important; width: auto !important; max-width: none !important; }
+
+/* Zoom controls overlay */
+.mermaid-controls { position: absolute; top: 6px; right: 8px; display:flex; gap:6px; z-index: 30 }
+.mermaid-controls button { background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; padding: 6px 8px; border-radius:6px; font-size:12px; }
+
+
+/* Make Mermaid rendered area visually clean (no code header) */
+pre.mermaid, .mermaid, .mermaid-wrapper { background: transparent !important; border: none !important; padding: 0 !important; outline: none !important; box-shadow: none !important; }
+
+/* Make code blocks higher contrast */
+/* Code block background kept light for prose views; dark theme handled by .code-dark */
+pre { background: #fafafa; color: #0f1724; }
+pre code { color: inherit; }
+
+
+/* ── Brand color tokens ────────────────────────────────────────────────────── */
+/* Bold, refined SOLID indigo (indigo-600, #4f46e5). Chosen over a gradient for  */
+/* a clean, confident, corporate look that stays crisp on small pills/buttons.   */
+/* The utility names keep the historical "grad" prefix so every call site works  */
+/* unchanged; only the paint changed. Retune here to update app-wide.            */
+/* Primary surfaces: buttons, CTAs, tabs, badges, headers, checkbox fills */
+@utility brand-grad {
+  @apply bg-indigo-600;
+}
+/* Vivid: small icon chips + avatar circles + logo tiles (a touch brighter) */
+@utility brand-grad-vivid {
+  @apply bg-indigo-500;
+}
+/* Horizontal alias kept for API compatibility — same solid indigo. */
+@utility brand-grad-r {
+  @apply bg-indigo-600;
+}
+
+/* Gentle "breathe" pulse for the logo-based spinner */
+@keyframes brand-breathe {
+  0%, 100% { transform: scale(0.9); opacity: 0.6; }
+  50%      { transform: scale(1);   opacity: 1;   }
+}
+.brand-breathe { animation: brand-breathe 1.4s ease-in-out infinite; }
+
+/* Light theme background */
+body {
+  background-color: #f7f7f8;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+/* Force light rendering for native form controls (input/textarea/select).
+   The app has no dark theme — every form control's text color is set
+   explicitly against a light background (e.g. text-gray-900). Without this,
+   a browser running under an OS-level dark preference (very common on
+   Windows) auto-applies a DARK background + light text to native controls
+   that don't declare `color-scheme: light` themselves, producing
+   near-black-on-near-black or otherwise unreadable text — even though the
+   component's own CSS looks correct in devtools. Scoping this at :root
+   covers every input/textarea/select across the whole app in one place. */
+:root {
+  color-scheme: light;
+}
+
+/* ── Code panel: Dark High-Contrast (IDE) theme ─────────────────────────────── */
+/* SCOPED: these rules ONLY apply inside `.code-dark` (the Code panel root when   */
+/* its theme toggle is on). No other panel carries this class, so there is zero   */
+/* blast radius on Chat/Buddy/rest of the app. We remap the handful of Tailwind   */
+/* utility colors the Code panel actually uses rather than editing ~50 JSX class  */
+/* strings. Palette is GitHub-dark-inspired for a familiar high-contrast IDE feel.*/
+.code-dark { color-scheme: dark; }
+
+/* Surfaces */
+.code-dark.bg-white,
+.code-dark .bg-white              { background-color: #0d1117 !important; }
+.code-dark .bg-gray-50            { background-color: #161b22 !important; }
+.code-dark .bg-gray-100,
+.code-dark .hover\:bg-gray-100:hover { background-color: #21262d !important; }
+.code-dark .hover\:bg-gray-50:hover  { background-color: #1c2128 !important; }
+
+/* Text */
+.code-dark .text-gray-900,
+.code-dark .text-gray-800         { color: #f0f6fc !important; }
+.code-dark .text-gray-700,
+.code-dark .text-gray-600         { color: #c9d1d9 !important; }
+.code-dark .text-gray-500,
+.code-dark .text-gray-400         { color: #8b949e !important; }
+
+/* Borders */
+.code-dark .border-gray-100,
+.code-dark .border-gray-200,
+.code-dark .border-gray-300       { border-color: #30363d !important; }
+
+/* Indigo accent chips (keep brand hue, adapt to dark surface) */
+.code-dark .bg-indigo-50          { background-color: #1b2436 !important; }
+.code-dark .bg-indigo-100         { background-color: #243043 !important; }
+.code-dark .text-indigo-700,
+.code-dark .text-indigo-800       { color: #a5b4fc !important; }
+
+/* Inputs / placeholders */
+.code-dark input,
+.code-dark textarea               { color: #f0f6fc; caret-color: #a5b4fc; }
+.code-dark input::placeholder,
+.code-dark textarea::placeholder  { color: #6e7681; }
+
+/* Error chip stays readable on dark */
+.code-dark .bg-red-50             { background-color: #2d1417 !important; }
+.code-dark .border-red-200        { border-color: #5c2226 !important; }
+.code-dark .text-red-600          { color: #ff7b72 !important; }
+
+/* Scrollbars inside the dark panel */
+.code-dark ::-webkit-scrollbar-thumb        { background-color: rgba(139, 148, 158, 0.4); }
+.code-dark ::-webkit-scrollbar-thumb:hover  { background-color: rgba(139, 148, 158, 0.7); }
+
+/* ── Ultra-Modern Premium Scrollbar ────────────────────────────────────────── */
+/* WebKit browsers (Chrome, Safari, Edge) - Glass minimalist style */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(243, 244, 246, 0.5);
+  border-radius: 100px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(243, 244, 246, 0.91);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: rgba(229, 231, 235, 0.5);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(243, 244, 246, 0.5) transparent;
+}
+
+*:hover {
+  scrollbar-color: rgba(243, 244, 246, 0.85) transparent;
+}
+
+/* Tailwind custom keyframes used by Skeleton.jsx */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes upload-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+.animate-upload-indeterminate {
+  animation: upload-indeterminate 1.1s ease-in-out infinite;
+}
+
+/* ── Markdown code block hygiene ──────────────────────────────────────────── */
+/* atom-one-dark sets background on .hljs; our <pre> already has bg-[#282c34]  */
+/* so we override .hljs background to transparent to avoid double-painting.    */
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Tight first/last child margin removal inside prose-like containers */
+.md-body > :first-child { margin-top: 0 !important; }
+.md-body > :last-child  { margin-bottom: 0 !important; }
+
+code, pre {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    monospace;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #1f2937;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: #6b7280;
+}
+
+.input:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+}
+
+.label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.375rem;
+}
+
+button#DialogProvider {
+    border: 1px solid silver;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px;
+    background-color: red;
+    color: #fff;
+    cursor: pointer;
+}
+
+
+/* Ensure all buttons and anchors show pointer cursor unless explicitly disabled */
+button:not(:disabled), a, [role="button"] { cursor: pointer; }

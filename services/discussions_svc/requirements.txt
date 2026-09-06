@@ -1,0 +1,7 @@
+# Discussions svc runs inside the SAME venv as the main app (it imports
+# agents/, db/, core/ directly) — this file documents the extra runtime deps
+# beyond what the main app already provides; it is not a standalone install.
+# No standalone FastAPI app anymore (see config.py header) — just the RQ
+# worker + httpx (used transitively via core/discussions_engine_client.py).
+httpx==0.28.1
+rq==2.7.0

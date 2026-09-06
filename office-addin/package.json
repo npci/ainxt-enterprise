@@ -1,0 +1,24 @@
+{
+  "name": "ainxt-office-addin",
+  "version": "1.0.0",
+  "description": "AiNxt task pane add-in for Outlook, Word, Excel and PowerPoint.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite --port 3100",
+    "build": "vite build",
+    "preview": "vite preview --port 3100",
+    "manifests": "node scripts/make-manifests.mjs"
+  },
+  "dependencies": {
+    "@microsoft/office-js": "^1.1.88",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^7.0.0",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17"
+  }
+}
