@@ -202,7 +202,7 @@ README is that product's documentation:
 | **Enterprise Knowledge Hub** | Organisational knowledge in one place, discoverable and usable | [knowledge base](docs/knowledge/knowledge_base.md) · [knowledge graph](docs/knowledge/knowledge_graph.md) · [setup guide](docs/KB_SETUP.md) |
 | **AiNxt Coach** | An AI mentor that helps people learn effective AI usage | [coach](docs/coach/coach.md) · [coach system](docs/coach/coach_system.md) |
 | **Agent Studio** | Build specialised agents around business needs and workflows | [agent system](docs/agents/agent_system.md) · [orchestration](docs/agents/agent_orchestration.md) · [swarm](docs/agents/swarm.md) |
-| **[Office add-ins](#office-add-in-outlook-word-excel-powerpoint)** | Intelligence inside Outlook, Word, Excel and PowerPoint, where people already work | [office](docs/documents/office.md) |
+| **[Office add-ins](#office-add-in-outlook-word-excel-powerpoint)** | Intelligence inside Outlook, Word, Excel and PowerPoint, where people already work | [office](docs/documents/office_addin.md) |
 | **ADLC** | Agentic Development Lifecycle — intelligence across the software lifecycle | [SDLC pipeline](docs/sdlc/sdlc_pipeline.md) · [governance](docs/sdlc/sdlc_governance.md) · [setup guide](docs/SDLC_CLI_SETUP.md) |
 | **Eval & observability** | Quality, usage, performance and cost, per request | [evals dashboard](docs/observability/evals_dashboard.md) · [monitoring](docs/observability/monitoring.md) · [LLM spend](docs/analytics/llm_spend.md) |
 | **Built-in guardrails** | Defence against jailbreaks, prompt injection and unsafe interactions | [security](docs/auth/authentication.md) · [RBAC](docs/auth/authentication_rbac.md) |
