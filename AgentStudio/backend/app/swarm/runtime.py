@@ -171,9 +171,17 @@ def _write_dump(run_id: str, payload: Dict[str, Any]) -> Optional[Path]:
     """
     if not _SWARM_DUMP_ENABLED:
         return None
+    # run_id is always an internally-generated uuid4 hex fragment (see
+    # `uuid.uuid4().hex[:12]` at call sites), but validate the shape
+    # defensively before using it in a filesystem path.
+    import re as _re_dump
+    if not run_id or not _re_dump.fullmatch(r"[A-Za-z0-9_-]{1,64}", str(run_id)):
+        logger.warning(f'[AGENT] {_SWARM_LOG_PREFIX} dump skipped — invalid run_id {run_id!r}')
+        return None
     try:
         _SWARM_DUMP_DIR.mkdir(parents=True, exist_ok=True)
-        path = _SWARM_DUMP_DIR / f"run_{run_id}.json"
+        from core.path_safety import safe_join_path as _safe_join
+        path = Path(_safe_join(str(_SWARM_DUMP_DIR), f"run_{run_id}.json"))
         # ``default=str`` lets us drop dataclasses / Path / datetime in
         # without writing a custom encoder. ``ensure_ascii=False`` keeps
         # non-ASCII task previews readable in the file.

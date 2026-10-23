@@ -192,6 +192,12 @@ def _serve(loop):
     cert_path, key_path = _write_ephemeral_server_cert("127.0.0.1")
     try:
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        # PROTOCOL_TLS_SERVER auto-negotiates the highest protocol both
+        # sides support, which (absent an explicit floor) can still fall
+        # back to TLS 1.0/1.1 against an old client. Pin a floor explicitly
+        # (CodeQL py/insecure-protocol / CWE-327) even though this is a
+        # test-only ephemeral HTTPS server.
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
         ssl_context.load_cert_chain(certfile=cert_path, keyfile=key_path)
     finally:
         # The context has the key material loaded into memory now; the

@@ -413,7 +413,15 @@ def _has_alpha(s: str) -> bool:
 # Blockquote prefix: leading indent + one-or-more '>' (each optionally followed
 # by a single space). Captured so we can strip it BEFORE fence/inline scanning
 # and re-emit it verbatim.
-_QUOTE_PREFIX_RE = re.compile(r"^(?P<prefix>(?:[ \t]*>[ \t]?)+)(?P<rest>.*)$")
+#
+# The leading `[ \t]*` is hoisted OUTSIDE the repeated group (rather than
+# `(?:[ \t]*>[ \t]?)+`) so there is only one place a run of whitespace can be
+# split: with it inside the repeated group, a given space could belong to one
+# iteration's trailing `[ \t]?` OR the next iteration's leading `[ \t]*`,
+# which is the classic ambiguous-repetition shape that makes a failing match
+# polynomial in input length (CodeQL py/redos). This form matches the same
+# real-world blockquote markers ("> > > text") without the ambiguity.
+_QUOTE_PREFIX_RE = re.compile(r"^(?P<prefix>[ \t]*(?:>[ \t]?)+)(?P<rest>.*)$")
 
 # Fenced code open/close: 3+ backticks or 3+ tildes, optional indent, optional
 # info string. Run AFTER stripping blockquote prefix + indentation.

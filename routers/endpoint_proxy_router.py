@@ -64,6 +64,7 @@ from sqlalchemy.orm import Session
 
 from core.config import HOD_APPROVAL_ENABLED
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from db.database import SessionLocal
 from db.models import ManagedEndpoint, UserAPIKey, User
 
@@ -1208,7 +1209,7 @@ def _stream_response(
     except Exception as exc:
         failed = True
         logger.error(f"[endpoint-proxy] Streaming error model={model} endpoint={endpoint_id}: {exc}")
-        yield f"data: {json.dumps({'error': {'message': str(exc), 'type': 'server_error'}})}\n\n"
+        yield f"data: {json.dumps({'error': {'message': safe_error_detail(exc), 'type': 'server_error'}})}\n\n"
         yield "data: [DONE]\n\n"
     finally:
         latency_ms = int((time.time() - start_ts) * 1000)
@@ -1282,7 +1283,7 @@ def _non_stream_response(
     except Exception as exc:
         failed = True
         logger.error(f"[endpoint-proxy] Non-streaming error model={model}: {exc}")
-        raise HTTPException(status_code=502, detail=f"LLM call failed: {exc}")
+        raise HTTPException(status_code=502, detail=safe_error_detail(exc, context="LLM call failed"))
     finally:
         latency_ms = int((time.time() - start_ts) * 1000)
         if endpoint_id:
@@ -1712,7 +1713,7 @@ def _cloud_non_stream_response(
             "[endpoint-proxy] cloud non-streaming error slug=%s model=%s: %s",
             ep.get("slug"), model, exc,
         )
-        raise HTTPException(status_code=502, detail=f"LLM call failed: {exc}")
+        raise HTTPException(status_code=502, detail=safe_error_detail(exc, context="LLM call failed"))
 
     finally:
         latency_ms = int((time.time() - start_ts) * 1000)

@@ -158,7 +158,13 @@ export function createBridgeServer({ token, port = DEFAULT_PORT, log = console.e
     if (req.method === "POST" && url.pathname === "/run") {
       if (!extAuthed) return json(res, 503, { ok: false, error: "extension not connected" });
       let task;
-      try { task = await readBody(req); } catch (e) { return json(res, 400, { ok: false, error: String(e.message || e) }); }
+      try { task = await readBody(req); } catch (e) {
+        // Log the real error server-side only — returning the raw message
+        // (e.g. a JSON.parse SyntaxError with input snippets) to the HTTP
+        // client risks leaking internal detail (CodeQL js/stack-trace-exposure).
+        console.error("[ainxt-bridge] /run: failed to read request body:", e);
+        return json(res, 400, { ok: false, error: "invalid request body" });
+      }
 
       const id = crypto.randomUUID();
       res.writeHead(200, {

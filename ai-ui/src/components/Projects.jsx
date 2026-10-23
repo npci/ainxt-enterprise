@@ -1273,7 +1273,7 @@ export default function Projects({
             />
 
             {/* Image preview strip */}
-            {imagePreviewUrl && (
+            {imagePreviewUrl && imagePreviewUrl.startsWith("blob:") && (
               <div className="mb-2 flex items-start gap-2">
                 <div className="relative inline-block">
                   <img

@@ -219,8 +219,11 @@ function handleFrame(frame) {
       cancelBridgeRun("cancelled by client", frame.id);
       return;
     case "gate_reply": {
+      // gateId comes off the wire: only a string key may index the registry, and the
+      // looked-up value must really be a function before it is invoked.
+      if (typeof frame.gateId !== "string") return;
       const resolve = pendingGates.get(frame.gateId);
-      if (!resolve) return;
+      if (typeof resolve !== "function") return;
       pendingGates.delete(frame.gateId);
       resolve(frame.decision === "approve" ? "approve" : "cancel");
       return;

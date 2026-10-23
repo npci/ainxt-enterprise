@@ -39,6 +39,7 @@ from connectors.registry import connector_registry
 # token-REFRESH path (connectors/engine._build_oauth_config) share ONE implementation.
 from connectors.oauth2 import oauth2_handler, pin_azure_tenant as _pin_azure_tenant
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from core.security_validation import (
     validate_connector_action_params,
     validate_connector_definition_request,
@@ -120,7 +121,7 @@ async def oauth_start(
     try:
         defn = _load_definition(connector_name)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=safe_error_detail(e))
 
     auth_config_raw = defn.get("auth_config", {})
     if not isinstance(auth_config_raw, dict):
@@ -156,7 +157,7 @@ async def oauth_start(
         oauth2_handler.save_state(state, user_id, connector_name, pkce_verifier)
     except Exception as e:
         logger.error(f"connectors_router.oauth_start: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to start OAuth flow: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to start OAuth flow: {safe_error_detail(e)}")
 
     return {"authorize_url": authorize_url, "state": state}
 
@@ -231,7 +232,7 @@ async def oauth_callback(
 
     except Exception as e:
         logger.error(f"connectors_router.oauth_callback: {e}")
-        return _oauth_complete(connector_name, success=False, error=str(e)[:100])
+        return _oauth_complete(connector_name, success=False, error=safe_error_detail(e)[:100])
 
 
 # ── API key / bearer token storage ───────────────────────────────────────────
@@ -248,7 +249,7 @@ async def store_api_key(
     try:
         _load_definition(connector_name)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=safe_error_detail(e))
 
     from store.credential_vault import encrypt_value
     import datetime
@@ -340,7 +341,7 @@ async def pat_connect(
     try:
         _load_definition(connector_name)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=safe_error_detail(e))
 
     # Fetch the user's PAT from the profile user_tokens table.
     from routers.profile_router import get_decrypted_token
@@ -482,7 +483,7 @@ async def dpi_consent_start(
     try:
         defn = _load_definition(connector_name)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=safe_error_detail(e))
     if defn.get("auth_type") != "dpi_consent":
         raise HTTPException(status_code=400, detail=f"{connector_name} is not a DPI consent connector")
 
@@ -511,7 +512,7 @@ async def dpi_consent_store(
     try:
         _load_definition(connector_name)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=safe_error_detail(e))
 
     from connectors.dpi.consent import consent_handler
     artifact = body.artifact or {}
@@ -585,7 +586,7 @@ async def disconnect(
         finally:
             db.close()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
     return {"disconnected": True, "connector": connector_name}
 
@@ -655,7 +656,7 @@ async def test_connection(
             }
 
     except Exception as e:
-        return {"success": False, "connector": connector_name, "error": str(e)}
+        return {"success": False, "connector": connector_name, "error": safe_error_detail(e)}
 
 
 # ── Confirmed action (Cowork send/write) ──────────────────────────────────────
@@ -800,7 +801,7 @@ async def connector_action(
         raise
     except Exception as e:
         logger.error(f"connector_action error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 # ── Internal bridge (AB Studio agent tools) ───────────────────────────────────
@@ -897,7 +898,7 @@ async def connector_execute(
         )
     except Exception as e:
         logger.error(f"connector_execute error {req.connector}.{req.tool}: {e}")
-        return {"success": False, "error": str(e), "code": "EXECUTE_ERROR"}
+        return {"success": False, "error": safe_error_detail(e), "code": "EXECUTE_ERROR"}
 
     logger.info(
         f"CONNECTOR EXECUTE {user_id} → {req.connector}.{req.tool}: "
@@ -1005,7 +1006,7 @@ async def list_permissions(current_user=Depends(get_current_user)):
         ]
     except Exception as e:
         logger.error(f"list_permissions error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 @router.post("/permissions")
@@ -1045,7 +1046,7 @@ async def set_permission(req: ConnectorPermissionRequest, current_user=Depends(g
         return {"connector": req.connector, "tool": req.tool, "always_allow": req.always_allow}
     except Exception as e:
         logger.error(f"set_permission error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 @router.delete("/permissions/{connector_name}")
@@ -1078,7 +1079,7 @@ async def revoke_permission(
         return {"connector": connector_name, "tool": tool_name, "revoked": deleted > 0}
     except Exception as e:
         logger.error(f"revoke_permission error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 # ── Metrics (admin) ───────────────────────────────────────────────────────────
@@ -1156,7 +1157,7 @@ async def create_definition(
             if _attr.startswith("_defn_cache_"):
                 delattr(connector_engine, _attr)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
     return {"created": True, "name": body.name}
 
@@ -1217,7 +1218,7 @@ async def update_definition(
         if hasattr(connector_engine, cache_attr):
             delattr(connector_engine, cache_attr)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
     return {"updated": True, "name": connector_name}
 
@@ -1250,7 +1251,7 @@ async def delete_definition(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
     return {"deleted": True, "name": connector_name}
 
@@ -1445,18 +1446,33 @@ def _ui_redirect(connector_name: str, success: bool, error: str = "") -> str:
 
 
 def _oauth_complete(connector_name: str, success: bool, error: str = "") -> HTMLResponse:
-    target = _ui_redirect(connector_name, success, error)
+    # `connector_name` is a URL path parameter. Take the name that is shown/embedded in this
+    # page from the REGISTRY's own list (by equality), never from the request: an unknown
+    # name becomes the neutral "connector" (py/reflective-xss).
+    try:
+        _known_names = [str(d.get("name")) for d in (connector_registry.get_available() or [])]
+    except Exception:
+        _known_names = []
+    connector_name = next((n for n in _known_names if n == connector_name), "connector")
+    # Never reflect provider- or exception-supplied text into this page (reflected XSS /
+    # information exposure): log the real error server-side and show a fixed code.
+    if error:
+        logger.warning(f"OAuth connect failed for connector {connector_name!r}: {str(error)[:200]!r}")
+    # A constant expression: the page only ever sees one of two fixed values, chosen by whether
+    # an error was reported - never the caller-supplied text itself (py/reflective-xss).
+    page_error = "connection_failed" if error else ""
+    target = _ui_redirect(connector_name, success, page_error)
     payload = {
         "type": "ainxt:connector-oauth",
         "connector": connector_name,
         "success": success,
-        "error": error[:100] if error else "",
+        "error": page_error,
     }
     title = "Connection complete" if success else "Connection failed"
     message = (
         f"{connector_name} connected successfully. You can close this window."
         if success else
-        f"{connector_name} could not connect: {error or 'unknown error'}. You can close this window."
+        f"{connector_name} could not connect: {page_error or 'unknown error'}. You can close this window."
     )
     payload_json = json.dumps(payload).replace("</", "<\\/")
     target_json = json.dumps(target).replace("</", "<\\/")

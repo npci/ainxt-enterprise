@@ -11,6 +11,7 @@ from auth.dependencies import get_current_user as _get_current_user
 from auth.rbac import require_role as _require_role
 from memory.postgres_memory import PostgresMemory as _PM
 from core.logger import logger
+from core.error_utils import safe_error_detail
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -436,7 +437,7 @@ def agent_analytics(name: str, current_user: dict = Depends(_require_role("admin
             "model_usage":      {},
             "live_logs":        [],
             "agent_meta":       {},
-            "note":             f"Analytics unavailable: {e}",
+            "note":             safe_error_detail(e, context="agent_analytics unavailable"),
         }
 
 
@@ -726,7 +727,7 @@ def platform_analytics(
             "totals": {}, "comparison": {},
             "top_agents": [], "model_dist": {}, "series": [],
             "sdlc_summary": {}, "agent_stats": {},
-            "note": f"Analytics unavailable: {e}",
+            "note": safe_error_detail(e, context="platform_analytics unavailable"),
         }
 
 
@@ -811,7 +812,7 @@ def agent_studio_agents(
             session.close()
     except Exception as e:
         logger.warning(f"agent_studio_agents failed: {e}")
-        return {"granularity": granularity, "agents": [], "note": f"Agent Studio agents unavailable: {e}"}
+        return {"granularity": granularity, "agents": [], "note": safe_error_detail(e, context="agent_studio_agents unavailable")}
 
 
 @analytics_router.get("/analytics/agent-studio-agents/{name}")
@@ -929,5 +930,5 @@ def agent_studio_agent_detail(
             "total_tokens":     0,
             "model_usage":      {},
             "agent_meta":       {},
-            "note":             f"Analytics unavailable: {e}",
+            "note":             safe_error_detail(e, context="agent_studio_agent_detail unavailable"),
         }

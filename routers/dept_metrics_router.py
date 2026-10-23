@@ -13,6 +13,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text as _text
 
+from core.error_utils import safe_error_detail
+
 router = APIRouter(prefix="/dept-metrics", tags=["dept-metrics"])
 
 
@@ -56,7 +58,7 @@ def dept_summary(days: int = Query(7, ge=1, le=90), db=Depends(_get_db)):
         """), {"days": days}).fetchall()
         return {"days": days, "departments": [dict(r._mapping) for r in rows]}
     except Exception as e:
-        return {"days": days, "departments": [], "error": str(e)}
+        return {"days": days, "departments": [], "error": safe_error_detail(e)}
 
 
 @router.get("/{dept}")
@@ -104,7 +106,7 @@ def dept_stats(
             "daily":       [dict(r._mapping) for r in daily],
         }
     except Exception as e:
-        return {"department": dept, "days": days, "summary": {}, "daily": [], "error": str(e)}
+        return {"department": dept, "days": days, "summary": {}, "daily": [], "error": safe_error_detail(e)}
 
 
 @router.get("/{dept}/models")
@@ -131,7 +133,7 @@ def dept_model_breakdown(
         """), {"dept": dept, "days": days}).fetchall()
         return {"department": dept, "days": days, "models": [dict(r._mapping) for r in rows]}
     except Exception as e:
-        return {"department": dept, "days": days, "models": [], "error": str(e)}
+        return {"department": dept, "days": days, "models": [], "error": safe_error_detail(e)}
 
 
 @router.get("/{dept}/evals")
@@ -157,4 +159,4 @@ def dept_eval_summary(
         """), {"dept": dept, "days": days}).fetchall()
         return {"department": dept, "days": days, "evals": [dict(r._mapping) for r in rows]}
     except Exception as e:
-        return {"department": dept, "days": days, "evals": [], "error": str(e)}
+        return {"department": dept, "days": days, "evals": [], "error": safe_error_detail(e)}

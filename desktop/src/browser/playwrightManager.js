@@ -242,10 +242,10 @@ const api = {
     // tool-image cap) before redaction.
     let b64;
     try {
-      const Jimp = require("jimp");
+      const { Jimp, JimpMime } = require("jimp");
       const j = await Jimp.read(buf);
-      if (Math.max(j.bitmap.width, j.bitmap.height) > 1400) j.scaleToFit(1400, 1400);
-      b64 = (await j.getBufferAsync(Jimp.MIME_PNG)).toString("base64");
+      if (Math.max(j.bitmap.width, j.bitmap.height) > 1400) j.scaleToFit({ w: 1400, h: 1400 });
+      b64 = (await j.getBuffer(JimpMime.png)).toString("base64");
     } catch { b64 = buf.toString("base64"); }
     const red = await _redactImage(opts, b64);
     if (!red.ok) {
@@ -334,17 +334,20 @@ const TOOLS = [
 ];
 
 async function executeTool(name, input = {}, opts = {}) {
-  const fn = {
-    browser_navigate: api.navigate,
-    browser_extract: api.extract,
-    browser_screenshot: api.screenshot,
-    browser_wait_for: api.wait_for,
-    browser_back: api.back,
-    browser_click: api.click,
-    browser_type: api.type,
-    browser_select: api.select,
-  }[name];
-  if (!fn) throw new Error(`Unknown browser tool: ${name}`);
+  // A Map (not an object literal): `{...}[name]` would also resolve inherited keys such as
+  // "constructor" / "__proto__" to Object.prototype members, which would then be called.
+  const tools = new Map([
+    ["browser_navigate", api.navigate],
+    ["browser_extract", api.extract],
+    ["browser_screenshot", api.screenshot],
+    ["browser_wait_for", api.wait_for],
+    ["browser_back", api.back],
+    ["browser_click", api.click],
+    ["browser_type", api.type],
+    ["browser_select", api.select],
+  ]);
+  const fn = typeof name === "string" ? tools.get(name) : undefined;
+  if (typeof fn !== "function") throw new Error(`Unknown browser tool: ${String(name)}`);
   return fn(input, opts);
 }
 

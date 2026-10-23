@@ -73,9 +73,14 @@ _CACHEABLE_PATHS = ("/v1/messages", "/v1/messages/count_tokens")
 
 def _is_messages_request(request: httpx.Request) -> bool:
     """True only for a POST of a Messages payload to the Anthropic API host."""
+    # `.endswith("anthropic.com")` alone would also match an attacker-chosen
+    # host like "evil-anthropic.com" (CodeQL py/incomplete-url-substring-
+    # sanitization) — require an exact match or a proper subdomain (with the
+    # separating dot) instead.
+    host = (request.url.host or "").lower()
     return (
         request.method == "POST"
-        and request.url.host.endswith("anthropic.com")
+        and (host == "anthropic.com" or host.endswith(".anthropic.com"))
         and request.url.path.rstrip("/") in _CACHEABLE_PATHS
     )
 

@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from core.config import EMBED_SVC_URL as _EMBED_SVC_URL, RDB_CACHE
 from core.kv import get_kv
 
@@ -21,6 +22,23 @@ from core.kv import get_kv
 def _docs_kv():
     """KV client for the docs namespace registry (DB=0)."""
     return get_kv(RDB_CACHE, decode_responses=True)
+
+
+# knowledge_docs.id is a UUID primary key (db.models.KnowledgeDocument.id).
+# Any function that builds an on-disk file path from `doc_id` must validate
+# it against this pattern FIRST so a crafted doc_id (e.g. containing `../`)
+# can never be used to read/write/delete a path outside KB_DOC_STORAGE_PATH
+# (CodeQL py/path-injection defense-in-depth — the DB layer already rejects
+# non-UUID values for lookups, but filesystem operations below don't always
+# depend on a successful lookup first).
+_DOC_ID_RE = re.compile(r"^[0-9a-fA-F-]{1,64}$")
+
+
+def _safe_doc_id(doc_id: str) -> str:
+    """Return doc_id if it is a syntactically valid UUID-shaped id, else raise."""
+    if not doc_id or not _DOC_ID_RE.match(doc_id):
+        raise ValueError(f"invalid doc_id: {doc_id!r}")
+    return doc_id
 
 
 # ---------------------------------------------------------------------------
@@ -1315,7 +1333,7 @@ def upload_doc(
             f"[UPLOAD_DOC][step=complete][ERROR] doc='{_display}' "
             f"elapsed={_elapsed_ms:.0f}ms error='{e}'"
         )
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": safe_error_detail(e)}
 
 
 def activate_doc(
@@ -1560,7 +1578,7 @@ def activate_doc(
                 )
                 return {
                     "success": False,
-                    "error":   str(_dpe),
+                    "error":   safe_error_detail(_dpe),
                 }
 
         else:
@@ -2453,6 +2471,11 @@ def delete_doc(doc_id: str, deleted_by: str = None, deleted_by_dept: str = None)
     (passed from the router's current_user) and are stored on the snapshot
     row for the GET /kb/deleted-history ACL filter.
     """
+    try:
+        doc_id = _safe_doc_id(doc_id)
+    except ValueError as _bad_id_exc:
+        logger.warning(f"[DELETE_DOC] rejected non-UUID doc_id: {_bad_id_exc}")
+        return {"success": False, "error": "Document not found"}
     # Phase 3f: drop shared doc cache for this doc before touching SQL —
     # avoids a brief race where another request warms the cache from the
     # row we're about to delete.
@@ -2511,7 +2534,8 @@ def delete_doc(doc_id: str, deleted_by: str = None, deleted_by_dept: str = None)
         import os as _os_del
 
         # Delete .md file
-        _md_path = _os_del.path.join(_KB_FS_ROOT, f"{doc_id}.md")
+        from core.path_safety import safe_join_path as _safe_join_del
+        _md_path = _safe_join_del(_KB_FS_ROOT, f"{doc_id}.md")
         if _os_del.path.isfile(_md_path):
             _os_del.unlink(_md_path)
             logger.info(f"[DELETE_DOC] doc_id={doc_id} removed .md file '{_md_path}'")
@@ -2540,8 +2564,8 @@ def delete_doc(doc_id: str, deleted_by: str = None, deleted_by_dept: str = None)
         except Exception:
             pass
 
-        if _orig_ext:
-            _orig_path = _os_del.path.join(_KB_FS_ROOT, f"{doc_id}.{_orig_ext}")
+        if _orig_ext and re.fullmatch(r"[A-Za-z0-9]{1,16}", _orig_ext):
+            _orig_path = _safe_join_del(_KB_FS_ROOT, f"{doc_id}.{_orig_ext}")
             if _os_del.path.isfile(_orig_path):
                 _os_del.unlink(_orig_path)
                 logger.info(
@@ -2621,7 +2645,7 @@ def delete_doc(doc_id: str, deleted_by: str = None, deleted_by_dept: str = None)
 
     except Exception as e:
         logger.error(f"docs_store.delete_doc failed: {e}")
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": safe_error_detail(e)}
 
 
 def list_namespaces() -> List[str]:
@@ -2700,6 +2724,12 @@ def get_original_path(doc_id: str, original_ext: Optional[str] = None) -> Option
     the binary back to the Chat UI's citation footer "Open original" link.
     """
     try:
+        doc_id = _safe_doc_id(doc_id)
+    except ValueError as _bad_id_exc:
+        logger.warning(f"get_original_path: rejected non-UUID doc_id: {_bad_id_exc}")
+        return None
+
+    try:
         from core.config import KB_DOC_STORAGE_PATH as _KB_FS_ROOT
     except Exception as _ce:
         logger.warning(f"get_original_path: KB_DOC_STORAGE_PATH unavailable: {_ce}")
@@ -2722,5 +2752,16 @@ def get_original_path(doc_id: str, original_ext: Optional[str] = None) -> Option
         if not _ext:
             return None
 
-    _abs = os.path.join(_KB_FS_ROOT, f"{doc_id}.{_ext}")
+    # Extensions are derived server-side from a stored filename suffix and
+    # should never contain path separators — reject defensively rather than
+    # trust it implicitly before using it in a path.
+    if not re.fullmatch(r"[A-Za-z0-9]{1,16}", _ext):
+        logger.warning(f"get_original_path: rejected unsafe extension {_ext!r} for doc_id={doc_id}")
+        return None
+
+    from core.path_safety import safe_join_path
+    try:
+        _abs = safe_join_path(_KB_FS_ROOT, f"{doc_id}.{_ext}")
+    except ValueError:
+        return None
     return _abs if os.path.exists(_abs) else None

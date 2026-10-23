@@ -63,7 +63,12 @@ export function isSanitizationEnabled ()
 // No 'g' flag — used with .test() which is stateful with /g
 const XSS_PATTERNS = {
   // HTML/Script injection
-  SCRIPT_TAG: /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/i,
+  // Matches a <script ...> opening tag on its own (not just a fully-closed
+  // <script>...</script> pair) so an unclosed/truncated tag -- a known
+  // bypass technique against "wait for the closing tag" filters -- is
+  // still flagged. HTML_TAG below is a broader catch-all for any tag at
+  // all; this pattern exists for the more specific xss_script message.
+  SCRIPT_TAG: /<script\b[^>]*>/i,
   IFRAME_TAG: /<iframe[^>]*>/i,
   OBJECT_TAG: /<object[^>]*>/i,
   EMBED_TAG: /<embed[^>]*>/i,

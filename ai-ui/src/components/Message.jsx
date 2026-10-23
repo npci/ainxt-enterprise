@@ -164,6 +164,13 @@ export function MermaidDiagram({ source }) {
   // genuinely fail real mermaid parsing now fixed, on top of the ~109
   // fixed by the original version of this function. See the regression
   // suite this was developed against for the full before/after diagrams.
+  // Escape a value for embedding inside a double-quoted Mermaid node label.
+  // Backslashes must be escaped before quotes -- escaping quotes first left
+  // a lone trailing/embedded backslash free to combine with the character
+  // that follows (including the closing quote we add), which could corrupt
+  // the label or let crafted content break out of the quoted string.
+  const mermaidEscape = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
   const sanitize = (s) => {
     if (!s) return s;
     // Fix: the original regex /[\u0000-\u001F&&[^\n\r\t]]/g was a no-op
@@ -223,7 +230,7 @@ export function MermaidDiagram({ source }) {
           if (quoted !== undefined) return m; // already quoted -- leave as-is
           const trimmed = String(unquoted).trim();
           if (isSubgraphLine) {
-            const safe = trimmed.replace(/"/g, '\\"');
+            const safe = mermaidEscape(trimmed);
             return `${id}["${safe}"]`;
           }
           if (/^[/\\].*[/\\]$/.test(trimmed)) return m; // parallelogram/trapezoid
@@ -232,10 +239,10 @@ export function MermaidDiagram({ source }) {
           if (cylinderMatch) {
             const inner = cylinderMatch[1];
             if (!inner.includes("/")) return m; // safe unquoted
-            const safeInner = inner.replace(/"/g, '\\"');
+            const safeInner = mermaidEscape(inner);
             return `${id}[("${safeInner}")]`;
           }
-          const safe = trimmed.replace(/"/g, '\\"');
+          const safe = mermaidEscape(trimmed);
           return `${id}["${safe}"]`;
         }
       );

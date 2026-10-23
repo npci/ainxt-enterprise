@@ -626,8 +626,11 @@ def generate_and_send_digest_bulk(
                 reason = res.get("skipped_reason") or "unknown"
                 skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
         except ValueError as exc:
-            reason = str(exc)
-            if reason in skippable_reasons:
+            raw_reason = str(exc)
+            # Take the value from the ALLOWED set (not from the exception) so only a known,
+            # constant reason ever reaches the returned summary.
+            reason = next((r for r in skippable_reasons if r == raw_reason), None)
+            if reason is not None:
                 skipped += 1
                 skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
                 logger.info(
@@ -636,14 +639,14 @@ def generate_and_send_digest_bulk(
                 )
             else:
                 logger.error(
-                    "%s bulk: %s=%s err=%s", log_prefix, roster_key_name, key, reason,
+                    "%s bulk: %s=%s err=%s", log_prefix, roster_key_name, key, raw_reason,
                 )
-                failed.append({roster_key_name: key, "error": reason})
+                failed.append({roster_key_name: key, "error": "could not be processed (see server log)"})
         except Exception as exc:
             logger.error(
                 "%s bulk: %s=%s err=%s", log_prefix, roster_key_name, key, exc,
             )
-            failed.append({roster_key_name: key, "error": str(exc)})
+            failed.append({roster_key_name: key, "error": "could not be processed (see server log)"})
 
     return {
         "ok":              True,

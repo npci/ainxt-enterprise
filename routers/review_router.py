@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 
 from auth.dependencies import get_current_user
 from core.logger import logger
-
+from core.error_utils import safe_error_detail
 router = APIRouter(tags=["review"])
 
 
@@ -89,7 +89,7 @@ def review_code(
         }
     except Exception as e:
         logger.error(f"review_code endpoint failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 @router.post("/review/static")
@@ -119,7 +119,7 @@ def review_static(
         }
     except Exception as e:
         logger.error(f"review_static endpoint failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 @router.post("/review/architecture")
@@ -144,7 +144,7 @@ def review_architecture(
         return result
     except Exception as e:
         logger.error(f"review_architecture endpoint failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 @router.post("/review/full")
@@ -179,7 +179,7 @@ def review_full(
         }
     except Exception as e:
         logger.warning(f"review_full phase1 failed: {e}")
-        phase1 = {"error": str(e)}
+        phase1 = {"error": safe_error_detail(e)}
 
     # Phase 2: static analysis
     try:
@@ -191,7 +191,7 @@ def review_full(
         phase2 = {"tool": req.static_tool, "findings": findings, "count": len(findings)}
     except Exception as e:
         logger.warning(f"review_full phase2 failed: {e}")
-        phase2 = {"error": str(e), "findings": []}
+        phase2 = {"error": safe_error_detail(e), "findings": []}
 
     # Phase 3: architecture review
     try:
@@ -203,7 +203,7 @@ def review_full(
         phase3 = arch
     except Exception as e:
         logger.warning(f"review_full phase3 failed: {e}")
-        phase3 = {"error": str(e), "violations": [], "suggestions": [], "score": 1.0}
+        phase3 = {"error": safe_error_detail(e), "violations": [], "suggestions": [], "score": 1.0}
 
     # Aggregate overall score (weighted average: consensus 50%, arch 30%, static 20%)
     consensus_score = phase1.get("combined_score", 1.0) if "error" not in phase1 else 1.0

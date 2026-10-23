@@ -15,6 +15,7 @@
 # ============================================================
 
 import os
+import urllib.parse
 import uuid
 import re
 from datetime import datetime
@@ -26,6 +27,7 @@ from pydantic import BaseModel
 from core.config import RDB_REGISTRY
 from core.kv import get_kv, KVError
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from auth.dependencies import get_current_user
 from auth.rbac import require_role, is_c1_plus, can_approve
 from core.security_validation import (
@@ -177,6 +179,35 @@ def _validate_repo_url(url: str):
 _validate_gitlab_url = _validate_repo_url
 
 
+def _is_unsafe_outbound_host(host: str) -> bool:
+    """True if `host` is (or resolves to) a private/loopback/link-local/
+    reserved/multicast address, or can't be resolved at all.
+
+    `_check_protected_branch` below builds an outbound request URL directly
+    from the caller-supplied `repo_url`'s host — `_validate_repo_url` only
+    checks the URL starts with ``https://`` and has no ``..``/spaces, so
+    without this guard a submitter could point the server at an internal
+    host/IP (e.g. the cloud metadata endpoint) (CWE-918 SSRF / CodeQL
+    py/full-ssrf). Fails closed: anything that can't be proven safe is
+    treated as unsafe.
+    """
+    import socket
+    import ipaddress
+
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        try:
+            resolved = socket.gethostbyname(host)
+            ip = ipaddress.ip_address(resolved)
+        except (socket.gaierror, ValueError, UnicodeError):
+            return True
+    return (
+        ip.is_private or ip.is_loopback or ip.is_link_local
+        or ip.is_reserved or ip.is_multicast or ip.is_unspecified
+    )
+
+
 def _check_protected_branch(repo_url: str, branch: str) -> bool:
     """
     Verify whether the branch is protected on the repo's host.
@@ -202,8 +233,23 @@ def _check_protected_branch(repo_url: str, branch: str) -> bool:
             return resp.status_code == 200
 
         # GitLab (self-hosted or gitlab.com): GET /api/v4/projects/{id}/protected_branches/{branch}
-        encoded_path = path.replace("/", "%2F")
-        api_url = f"https://{host}/api/v4/projects/{encoded_path}/protected_branches/{branch}"
+        # SSRF guard (CWE-918): `host` came straight from the caller-supplied repo_url, so never
+        # call out to it directly. Only hosts on the operator-configured allowlist are queried,
+        # and the URL is built from the matched ALLOWLIST ENTRY, not from request data. For any
+        # other host the advisory pre-check is skipped (False == "no extra warning").
+        # Configure self-hosted GitLab hosts via INDEX_PROTECTED_BRANCH_CHECK_HOSTS
+        # (comma-separated hostnames); default is gitlab.com.
+        _allowed_hosts = [
+            h.strip().lower()
+            for h in os.getenv("INDEX_PROTECTED_BRANCH_CHECK_HOSTS", "gitlab.com").split(",")
+            if h.strip()
+        ]
+        _matched_host = next((h for h in _allowed_hosts if h == host.lower()), None)
+        if _matched_host is None or _is_unsafe_outbound_host(_matched_host):
+            logger.info(f"[index_router] skipping branch-protection check: host not on allowlist: {host!r}")
+            return False
+        encoded_path = urllib.parse.quote(path, safe="")
+        api_url = f"https://{_matched_host}/api/v4/projects/{encoded_path}/protected_branches/{urllib.parse.quote(branch, safe='')}"
         headers = {}  # branch-protection check is unauthenticated; token injected at clone time
         resp = httpx.get(api_url, headers=headers, timeout=5.0)
         return resp.status_code == 200
@@ -505,7 +551,7 @@ def submit_index_request(body: IndexSubmitRequest, current_user=Depends(get_curr
     try:
         get_scm_token(email=current_user.get("email", ""))
     except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
+        raise HTTPException(status_code=403, detail=safe_error_detail(exc))
 
     _validate_gitlab_url(gitlab_url)
 
@@ -646,7 +692,7 @@ def submit_index_request(body: IndexSubmitRequest, current_user=Depends(get_curr
             )
         except PermissionError as exc:
             _mark_index_request_failed(req_id, str(exc))
-            raise HTTPException(status_code=403, detail=str(exc))
+            raise HTTPException(status_code=403, detail=safe_error_detail(exc))
         return {
             "request_id":          req_id,
             "repo_name":           repo_name,
@@ -829,7 +875,7 @@ def approve_index_request(req_id: str, body: ReviewAction = ReviewAction(), curr
         )
     except PermissionError as exc:
         _mark_index_request_failed(req_id, str(exc))
-        raise HTTPException(status_code=403, detail=str(exc))
+        raise HTTPException(status_code=403, detail=safe_error_detail(exc))
 
     # Remove the original "pending approval" notification for every OTHER
     # recipient (other HODs/delegates/approvers notified at submit time) --
@@ -1062,7 +1108,7 @@ def list_repos(current_user=Depends(get_current_user)):
     except Exception as e:
         logger.error(f"IndexRouter list_repos: {e}")
         import traceback; traceback.print_exc()
-        return {"repos": [], "error": str(e)}
+        return {"repos": [], "error": safe_error_detail(e)}
 
 
 @router.delete("/index/repos/{name}")
@@ -1217,7 +1263,7 @@ def reindex_repo(name: str, current_user=Depends(require_role("admin"))):
     try:
         token = get_gitlab_token(user_id=current_user.get("sub", ""), email=current_user.get("email", ""))
     except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
+        raise HTTPException(status_code=403, detail=safe_error_detail(exc))
     authed_url = inject_gitlab_token(gitlab_url, token)
 
     payload = {
@@ -1373,7 +1419,7 @@ def index_health(current_user=Depends(require_role("admin"))):
 
     except Exception as e:
         logger.error(f"index_health: unexpected error → {e}")
-        return {"total": 0, "stale_count": 0, "repos": [], "error": str(e)}
+        return {"total": 0, "stale_count": 0, "repos": [], "error": safe_error_detail(e)}
 
 
 # ──────────────────────────────────────────────────────────────
@@ -1401,7 +1447,7 @@ def bulk_index(body: BulkIndexRequest = BulkIndexRequest(), current_user=Depends
     try:
         token = get_gitlab_token(user_id=current_user.get("sub", ""), email=current_user.get("email", ""))
     except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
+        raise HTTPException(status_code=403, detail=safe_error_detail(exc))
 
     # Fetch all branches and request IDs in a single query to avoid N+1.
     # request_id_map is used so the worker can update index_requests on failure.

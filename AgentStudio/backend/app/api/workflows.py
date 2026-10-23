@@ -182,8 +182,10 @@ async def delete_workflow_route(workflow_id: str, current_user: AuthenticatedUse
             c for c in (workflow_id or "") if c.isalnum() or c in ("-", "_")
         )
         if _safe:
-            _wf_dir = _wf_samples_root() / _safe
-            if _wf_dir.exists():
+            import os as _os
+            from core.path_safety import safe_join_path as _safe_join
+            _wf_dir = _safe_join(str(_wf_samples_root()), _safe)
+            if _os.path.exists(_wf_dir):
                 _shutil.rmtree(_wf_dir, ignore_errors=True)
     except Exception:
         logger.exception("[AGENT] workflow-node sample cleanup on workflow delete failed")

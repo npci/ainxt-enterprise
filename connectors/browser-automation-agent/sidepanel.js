@@ -2096,18 +2096,32 @@ function renderRecordingResult(steps, yaml, totalSteps = steps.length) {
 
 const CRITICAL_RECORD_ACTIONS = new Set(["type", "check", "uncheck", "select", "upload_file"]);
 
+// Escape a value for embedding inside a YAML double-quoted scalar.
+// Backslashes MUST be escaped before quotes -- escaping quotes first (the
+// previous implementation) leaves a trailing/embedded backslash free to
+// combine with the following character (e.g. the closing quote we add),
+// which can corrupt the scalar or let an attacker-controlled value break
+// out of the quoted string.
+function yamlEscape(value) {
+  return String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r");
+}
+
 function yamlTargetField(key, target) {
   if (!target) return null;
   if (Array.isArray(target)) {
     if (target.length === 0) return null;
-    if (target.length === 1) return `    ${key}: "${String(target[0]).replace(/"/g, '\\"')}"`;
+    if (target.length === 1) return `    ${key}: "${yamlEscape(target[0])}"`;
     const lines = [`    ${key}:`];
     for (const t of target) {
-      lines.push(`      - "${String(t).replace(/"/g, '\\"')}"`);
+      lines.push(`      - "${yamlEscape(t)}"`);
     }
     return lines.join("\n");
   }
-  return `    ${key}: "${String(target).replace(/"/g, '\\"')}"`;
+  return `    ${key}: "${yamlEscape(target)}"`;
 }
 
 // Render only the step entries (no test_name/steps header), so a new recording can be
@@ -2116,13 +2130,13 @@ function stepsToYamlBody(steps) {
   const lines = [];
   for (const s of steps) {
     const parts = [`  - action: ${s.action}`];
-    if (s.url) parts.push(`    url: "${s.url}"`);
+    if (s.url) parts.push(`    url: "${yamlEscape(s.url)}"`);
     const targetLine = yamlTargetField("target", s.target);
     if (targetLine) parts.push(targetLine);
     const inputTargetLine = yamlTargetField("inputTarget", s.inputTarget);
     if (inputTargetLine) parts.push(inputTargetLine);
     if (s.isoDate) parts.push(`    isoDate: "${s.isoDate}"`);
-    if (s.value != null) parts.push(`    value: "${String(s.value).replace(/"/g, '\\"')}"`);
+    if (s.value != null) parts.push(`    value: "${yamlEscape(s.value)}"`);
     if (s.filename) parts.push(`    filename: "${s.filename}"`);
     if (s.mime_type) parts.push(`    mime_type: "${s.mime_type}"`);
     if (CRITICAL_RECORD_ACTIONS.has(s.action)) parts.push(`    critical: true`);

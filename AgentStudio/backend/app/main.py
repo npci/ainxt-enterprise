@@ -63,6 +63,7 @@ from app.api import (
 # logging.basicConfig() here or AB Studio would also emit plain-text lines to
 # stdout via the root logger (double-logging + unstructured output).
 from core.logger import logger
+from core.error_utils import safe_error_detail
 
 GENERATED_FILES_DIR = os.path.abspath(
     os.getenv(
@@ -626,8 +627,11 @@ async def download_generated_file(
     """
     base = Path(GENERATED_FILES_DIR).resolve()
     base.mkdir(parents=True, exist_ok=True)
-    target = (base / filename).resolve()
     try:
+        # normpath + startswith containment check (core.path_safety) — the form
+        # CodeQL recognises as a path-injection barrier.
+        from core.path_safety import safe_join_path as _safe_join
+        target = Path(_safe_join(str(base), filename))
         rel = target.relative_to(base)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid filename")
@@ -687,7 +691,7 @@ async def health_check():
             health["db_mode"] = "postgres"
         except Exception as e:
             health["db"] = "error"
-            health["db_error"] = str(e)
+            health["db_error"] = safe_error_detail(e)
 
     # Which execution backend is actually serving agent turns, and how many CLI
     # processes are in flight. Worth surfacing here because "CLI mode is on but
@@ -704,7 +708,7 @@ async def health_check():
                 health["cli_problems"] = _status.problems
     except Exception as e:
         health["execution_backend"] = "unknown"
-        health["cli_error"] = str(e)
+        health["cli_error"] = safe_error_detail(e)
 
     return health
 

@@ -186,7 +186,8 @@ def diff_versions(prev_doc_id: str, next_doc_id: str) -> dict:
         }
     except Exception as e:
         logger.warning(f"kb_version_resolver.diff_versions failed: {e}")
-        return {"error": str(e)}
+        from core.error_utils import safe_error_detail
+        return {"error": safe_error_detail(e)}
 
 
 def _wrap(row, source: str) -> ResolvedVersion:

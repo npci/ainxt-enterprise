@@ -22,6 +22,7 @@ from dataclasses import asdict
 from auth.dependencies import get_current_user as _require_auth
 from core.logger import set_client_source, set_request_id, set_span_id, set_correlation_id
 from core.logger import logger, mask_email
+from core.error_utils import safe_error_detail
 
 
 # Set IDE_DEBUG=true in .env (or shell) to enable per-request DEBUG traces
@@ -177,7 +178,7 @@ def ide_run_agent(body: IDEAgentRun, request: Request, _u: dict = Depends(_requi
         result = runner.run(body.agent, body.message, body.session_id)
     except Exception as exc:
         logger.exception("[IDE:%s] runner.run() raised: %s", req_id, exc)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=safe_error_detail(exc))
 
     latency_ms = int((time.time() - t_start) * 1000)
     result_dict = asdict(result)
@@ -504,13 +505,13 @@ async def ide_chat(body: IDEChat, request: Request, _u: dict = Depends(_require_
         if model_hint == "medium":
             # Already tried GPT — nothing left to fall back to
             logger.exception("[IDE:%s] GPT call also failed: %s", req_id, exc)
-            raise HTTPException(status_code=500, detail=f"Model error: {exc}")
+            raise HTTPException(status_code=500, detail=f"Model error: {safe_error_detail(exc)}")
         try:
             answer = await model_router.async_generate(question, model_hint="medium")
             logger.info("[IDE:%s] GPT fallback succeeded", req_id)
         except Exception as fallback_exc:
             logger.exception("[IDE:%s] GPT fallback also failed: %s", req_id, fallback_exc)
-            raise HTTPException(status_code=500, detail=f"Model error: {exc}")
+            raise HTTPException(status_code=500, detail=f"Model error: {safe_error_detail(exc)}")
 
     # Capture token usage immediately after generate() so that
     # _propagate_tokens() values are not overwritten by a subsequent request.
@@ -721,7 +722,7 @@ def ide_run_workflow(body: IDEWorkflowRun, _u: dict = Depends(_require_auth)):
         result = workflow_engine.run(wf)
     except Exception as exc:
         logger.exception("[IDE:%s] workflow_engine.run() raised: %s", req_id, exc)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=safe_error_detail(exc))
 
     latency_ms = int((time.time() - t_start) * 1000)
     result_dict = asdict(result)

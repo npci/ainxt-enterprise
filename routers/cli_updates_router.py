@@ -74,11 +74,21 @@ class CliHeartbeatOut(BaseModel):
     update_available: bool = False
 
 
+def _release_path(*parts: str) -> str:
+    """Join ``parts`` under RELEASES_DIR with a normpath + startswith containment
+    check (core.path_safety — the form CodeQL recognises as a path-injection barrier)."""
+    from core.path_safety import safe_join_path
+    try:
+        return safe_join_path(RELEASES_DIR, *parts)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid path component")
+
+
 def _read_channel_version(channel: str) -> Optional[str]:
     """Read the currently-published version string for a channel (or None)."""
     if channel not in _CHANNELS:
         return None
-    fp = os.path.join(RELEASES_DIR, channel)
+    fp = _release_path(channel)
     if not os.path.isfile(fp):
         return None
     try:
@@ -106,7 +116,7 @@ async def latest_version(channel: str, current_user=Depends(get_current_user)):
     if channel not in _CHANNELS:
         logger.warning(f"[cli-updates] unknown channel '{channel}' user='{user_id}'")
         raise HTTPException(status_code=404, detail="unknown channel")
-    fp = os.path.join(RELEASES_DIR, channel)
+    fp = _release_path(channel)
     if not os.path.isfile(fp):
         logger.warning(f"[cli-updates] channel not published: '{channel}' expected_file='{fp}' user='{user_id}'")
         raise HTTPException(status_code=404, detail="channel not published")
@@ -121,7 +131,7 @@ async def version_manifest(version: str, current_user=Depends(get_current_user))
     """Return the per-version manifest (platform → sha256 checksum)."""
     user_id = _uid(current_user)
     _safe(version)
-    fp = os.path.join(RELEASES_DIR, version, "manifest.json")
+    fp = _release_path(version, "manifest.json")
     if not os.path.isfile(fp):
         logger.warning(f"[cli-updates] manifest not found: version='{version}' expected_file='{fp}' user='{user_id}'")
         raise HTTPException(status_code=404, detail="version not found")
@@ -136,7 +146,7 @@ async def version_binary(
     """Stream the platform binary for a version."""
     user_id = _uid(current_user)
     _safe(version, platform, binary)
-    fp = os.path.join(RELEASES_DIR, version, platform, binary)
+    fp = _release_path(version, platform, binary)
     if not os.path.isfile(fp):
         logger.warning(f"[cli-updates] binary not found: expected_file='{fp}' user='{user_id}'")
         raise HTTPException(status_code=404, detail="binary not found")

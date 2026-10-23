@@ -56,6 +56,8 @@ from core.discussions_engine_client import (
 )
 from core.job_queue import enqueue_discussions_job, enqueue_job, Q_DEFAULT
 from core.logger import logger
+from core.error_utils import safe_error_detail
+from core.config import IS_PROD
 from core.security_validation import (
     validate_discussion_title_and_tags,
     validate_free_text,
@@ -435,10 +437,12 @@ async def ask_question(body: AskQuestionReq, current_user: dict = Depends(get_cu
             f"discussions_router.ask_question: FAILED sub={sub!r} "
             f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
         )
+        # The full exception + traceback is already logged above. Never put raw
+        # exception text or a traceback in the response, in any environment
+        # (CodeQL py/stack-trace-exposure); safe_error_detail() returns the
+        # exception message only outside prod.
         return JSONResponse(status_code=500, content={
-            "debug_exception_type": type(e).__name__,
-            "debug_exception_str": str(e),
-            "debug_traceback": traceback.format_exc(),
+            "error": safe_error_detail(e, context="discussions_router.ask_question"),
         })
 
 

@@ -15,6 +15,8 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import func
 from typing import Optional
 
+from core.error_utils import safe_error_detail
+
 router = APIRouter(prefix="/evals", tags=["evals"])
 
 
@@ -319,7 +321,7 @@ def chat_quality_summary(
         """), params).fetchall()
         return {"days": days, "rows": [dict(r._mapping) for r in rows]}
     except Exception as e:
-        return {"days": days, "rows": [], "error": str(e)}
+        return {"days": days, "rows": [], "error": safe_error_detail(e)}
 
 
 @router.get("/runs/{run_id}")

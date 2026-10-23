@@ -41,6 +41,7 @@ from pydantic import BaseModel, field_validator
 from db.database import pg_raw_connection, DB_SCHEMA
 from core.job_queue import enqueue_codewiki_job, cancel_job
 from core.url_masking import mask_repo_url, mask_text
+from core.error_utils import safe_error_detail
 from core.security_validation import (
     validate_codewiki_generate_request,
     validate_codewiki_regenerate_request,
@@ -419,9 +420,15 @@ def _resolve_output_dir(job: dict, codebase_name: str) -> Path:
     already used by get_page()/regenerate_docs(), pulled out here so the
     new page-tree/search endpoints share it instead of re-deriving it.
     """
-    output_dir = job.get("output_dir") or str(
-        Path(_require_codewiki_docs_dir()) / codebase_name / job["branch"] / "latest"
-    )
+    output_dir = job.get("output_dir")
+    if not output_dir:
+        from core.path_safety import safe_join_path
+        try:
+            output_dir = safe_join_path(
+                _require_codewiki_docs_dir(), codebase_name, job["branch"], "latest"
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid codebase name.") from exc
     return Path(output_dir)
 
 
@@ -458,7 +465,11 @@ def _build_tree_children(children_map: dict, output_dir: Path, seen_files: set) 
         sub_children = info.get("children") or {}
         is_folder = bool(sub_children)
         md_name = f"{key}.md"
-        has_file = (output_dir / md_name).exists()
+        from core.path_safety import safe_join_path
+        try:
+            has_file = Path(safe_join_path(str(output_dir), md_name)).exists()
+        except ValueError:
+            has_file = False
         if has_file:
             seen_files.add(md_name)
         node = {
@@ -625,7 +636,7 @@ def generate_docs(payload: GenerateDocsRequest, current_user: dict = Depends(get
     try:
         _resolve_repo_reachability(payload.repo_url, payload.branch, current_user)
     except RuntimeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e))
 
     submitter = current_user.get("email") or current_user.get("sub", "unknown")
     submitter_is_admin = is_admin(current_user)
@@ -909,7 +920,7 @@ def regenerate_docs(payload: RegenerateDocsRequest, current_user: dict = Depends
     try:
         latest_sha = _resolve_repo_reachability(existing["repo_url"], existing["branch"], current_user)
     except RuntimeError as exc:
-        detail = str(exc)
+        detail = safe_error_detail(exc)
         if not payload.confirm:
             return {"note": detail}
         raise HTTPException(status_code=500, detail=detail)
@@ -1086,9 +1097,7 @@ def get_page(codebase_name: str, page_path: str, _user: dict = Depends(get_curre
             detail=f"Documentation for '{codebase_name}' is not ready (status: {job['status']}).",
         )
 
-    output_dir = job.get("output_dir") or str(
-        Path(_require_codewiki_docs_dir()) / codebase_name / job["branch"] / "latest"
-    )
+    output_dir = str(_resolve_output_dir(job, codebase_name))
     safe_path = page_path.replace("..", "").lstrip("/")
 
     # Two on-disk layouts exist:
@@ -1100,16 +1109,17 @@ def get_page(codebase_name: str, page_path: str, _user: dict = Depends(get_curre
     #    <output_dir>/<file>.md.
     # Try the flat layout first (current), then fall back to the legacy
     # docs/ subfolder so old completed wikis keep working unmodified.
-    candidates = [
-        Path(output_dir) / safe_path,
-        Path(output_dir) / "docs" / safe_path,
-    ]
-    file_path = next((c for c in candidates if c.exists()), candidates[0])
-
+    # normpath + startswith containment check (core.path_safety) — the form CodeQL
+    # recognises as a path-injection barrier.
+    from core.path_safety import safe_join_path
     try:
-        file_path.resolve().relative_to(Path(output_dir).resolve())
+        candidates = [
+            Path(safe_join_path(output_dir, safe_path)),
+            Path(safe_join_path(output_dir, "docs", safe_path)),
+        ]
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid page path.") from exc
+    file_path = next((c for c in candidates if c.exists()), candidates[0])
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Page not found.")
@@ -1378,7 +1388,7 @@ def delete_codebase(payload: RegenerateDocsRequest, current_user: dict = Depends
     try:
         cancel_ok = cancel_job(existing["id"])
     except Exception as _e:
-        cancel_err = str(_e)
+        cancel_err = safe_error_detail(_e)
 
     # Remove files on disk if present
     output_dir = existing.get("output_dir")
@@ -1390,7 +1400,7 @@ def delete_codebase(payload: RegenerateDocsRequest, current_user: dict = Depends
             shutil.rmtree(output_dir, ignore_errors=True)
             removed = True
         except Exception as _e:
-            remove_err = str(_e)
+            remove_err = safe_error_detail(_e)
 
     # Delete the DB row
     with pg_raw_connection() as conn:

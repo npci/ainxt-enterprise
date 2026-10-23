@@ -28,6 +28,8 @@ except Exception:
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
+from core.error_utils import safe_error_detail
+
 # Model size or a local directory of pre-downloaded weights (air-gap).
 _MODEL_NAME = os.getenv("WHISPER_MODEL", "base")
 # CPU only — mirrors embed_svc. Never default to GPU/MPS in this process.
@@ -45,7 +47,7 @@ try:
     print(f"[whisper_svc] loaded faster-whisper '{_MODEL_NAME}' device={_DEVICE} compute={_COMPUTE}",
           file=sys.stderr)
 except Exception as e:  # noqa: BLE001
-    _load_error = str(e)
+    _load_error = safe_error_detail(e, context="whisper_svc model load")
     print(f"[whisper_svc] model load failed: {e} — service will 503 until deps/model present",
           file=sys.stderr)
 
@@ -85,7 +87,7 @@ async def transcribe(file: UploadFile = File(...)):
         text = "".join(seg.text for seg in segments).strip()
         return {"text": text, "language": getattr(info, "language", "")}
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"transcription failed: {e}")
+        raise HTTPException(status_code=502, detail=safe_error_detail(e, context="transcription failed"))
     finally:
         if tmp_path:
             try:

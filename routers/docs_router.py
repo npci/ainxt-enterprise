@@ -17,6 +17,7 @@ from fastapi.concurrency import run_in_threadpool
 from auth.dependencies import get_current_user
 from core.file_validator import validate_upload
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from core.rate_limiter import enforce_rate_limit_with_behaviour, DOCS_UPLOAD
 from core.security_validation import validate_docs_upload_scope, validate_free_text, _flatten_errors
 
@@ -52,7 +53,11 @@ async def replicate_file_internal(
     from core.config import KB_DOC_STORAGE_PATH as _KB_FS_ROOT
     data = await file.read()
     os.makedirs(_KB_FS_ROOT, mode=0o755, exist_ok=True)
-    abs_path = os.path.join(_KB_FS_ROOT, f"{doc_id}.{_ext}")
+    from core.path_safety import safe_join_path
+    try:
+        abs_path = safe_join_path(_KB_FS_ROOT, f"{doc_id}.{_ext}")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid doc_id")
     tmp_path = abs_path + ".tmp"
     with open(tmp_path, "wb") as fh:
         fh.write(data)
@@ -76,7 +81,11 @@ async def delete_replica_file_internal(payload: dict):
         raise HTTPException(status_code=400, detail="Invalid extension")
 
     from core.config import KB_DOC_STORAGE_PATH as _KB_FS_ROOT
-    abs_path = os.path.join(_KB_FS_ROOT, f"{doc_id}.{ext}")
+    from core.path_safety import safe_join_path
+    try:
+        abs_path = safe_join_path(_KB_FS_ROOT, f"{doc_id}.{ext}")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid doc_id")
     deleted = False
     if os.path.isfile(abs_path):
         os.remove(abs_path)
@@ -343,7 +352,7 @@ async def upload_doc(
             results.append({
                 "success":  False,
                 "filename": original_filename,
-                "error":    f"Could not extract text from file: {_parse_err}",
+                "error":    f"Could not extract text from file: {safe_error_detail(_parse_err)}",
             })
             continue
 

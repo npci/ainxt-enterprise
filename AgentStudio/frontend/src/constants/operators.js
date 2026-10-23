@@ -81,7 +81,10 @@ export function buildExpressionPreview(condition) {
     } else if (type === 'boolean') {
         formattedValue = value ? 'True' : 'False';
     } else {
-        formattedValue = `'${String(value ?? '').replace(/'/g, "\\'")}'`;
+        // Escape backslashes before quotes -- escaping quotes first left a
+        // dangling backslash free to combine with the closing quote we add,
+        // letting a crafted value break out of the quoted literal.
+        formattedValue = `'${String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
     }
 
     if (operator === 'contains') return `${formattedValue} in input.${field}`;

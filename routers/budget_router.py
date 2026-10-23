@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel, field_validator, model_validator
 
 from core.logger import logger, mask_email
+from core.error_utils import safe_error_detail
 from core.pii_crypto import encrypt_pii, decrypt_pii
 from auth.dependencies import get_current_user
 from auth.rbac import (
@@ -1364,7 +1365,7 @@ def put_hod_delegates(
     try:
         result = set_hod_delegates(hod_email, requested)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+        raise HTTPException(status_code=422, detail=safe_error_detail(exc))
 
     logger.info(
         "budget_router: HOD %s set delegatees=%s (rows_updated=%d)",
@@ -1882,7 +1883,7 @@ def request_increase(
         )
     except ValueError as exc:
         logger.warning(f"budget_router request_increase rejected: {exc}")
-        raise HTTPException(status_code=422, detail=str(exc))
+        raise HTTPException(status_code=422, detail=safe_error_detail(exc))
 
     # Notify every approver (HOD + delegatees) via inbox + Outlook email.
     from store.budget_store import get_usage_total
@@ -2243,7 +2244,7 @@ def get_model_rates(current_user: dict = Depends(get_current_user)):
             db.close()
     except Exception as e:
         logger.error(f"budget_router get_model_rates: {e}")
-        return {"rates": [], "error": str(e)}
+        return {"rates": [], "error": safe_error_detail(e)}
 
 
 @router.get("/budget/summary")
@@ -2425,7 +2426,7 @@ def get_chargeback_summary(current_user: dict = Depends(_require_admin_or_operat
         }
     except Exception as e:
         logger.error(f"budget chargeback summary error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 @router.get("/budget/chargeback/{product_id}")
@@ -2513,7 +2514,7 @@ def get_product_chargeback(product_id: str, current_user: dict = Depends(get_cur
         }
     except Exception as e:
         logger.error(f"budget chargeback product {product_id} error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 @router.post("/budget/users/{user_id}/product")
@@ -2550,7 +2551,7 @@ def assign_product_budget(
         raise
     except Exception as e:
         logger.error(f"assign_product_budget error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -2789,7 +2790,7 @@ def admin_list_hods(request: Request, current_user: dict = Depends(get_current_u
         return {"hods": out}
     except Exception as e:
         logger.error(f"admin_list_hods error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -2889,7 +2890,7 @@ def admin_upsert_hod_cap(
     except Exception as e:
         db.rollback()
         logger.error(f"admin_upsert_hod_cap error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 

@@ -1341,8 +1341,13 @@ class Microsoft365Adapter(AdapterBase):
         """
         text = raw or ""
         if content_type and "html" in content_type.lower():
-            # Remove <style> and <script> blocks first (they add noise, not content)
-            text = re.sub(r"<(style|script)[^>]*>.*?</(style|script)>", " ", text,
+            # Remove <style> and <script> blocks first (they add noise, not content).
+            # Backreference `\1` (not a second independent `(style|script)`
+            # alternation) ties the closing tag to whichever one actually
+            # opened — the original let a mismatched pair like
+            # `<style>...</script>` match too, which could leave an actual
+            # `<script>` block's content un-stripped (CodeQL py/bad-tag-filter).
+            text = re.sub(r"<(style|script)\b[^>]*>.*?</\1\s*>", " ", text,
                           flags=re.IGNORECASE | re.DOTALL)
             # Block-level tags → newline so paragraphs stay readable
             text = re.sub(r"<(br|p|div|tr|li|h[1-6])[^>]*>", "\n", text,

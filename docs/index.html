@@ -10210,6 +10210,7 @@
         // Initialize mermaid
         mermaid.initialize({
             startOnLoad: false,
+            securityLevel: 'strict',
             theme: 'default',
             themeVariables: {
                 primaryColor: '#2563eb',
@@ -10393,22 +10394,41 @@
             let html = marked.parse(markdown);
             
             // Process mermaid code blocks
+            // `code` is already HTML-entity-escaped by marked (it came from a
+            // <code> block). Leave it escaped here -- the browser's own HTML
+            // parser decodes entities back to plain text when this string is
+            // assigned via innerHTML, and mermaid.render() reads the
+            // resulting plain text via `.textContent` further down. Manually
+            // decoding the entities first (the previous implementation) and
+            // then re-inserting the now-literal "<"/">" characters into an
+            // innerHTML-bound string turns escaped-safe text back into live,
+            // parseable markup -- e.g. a diagram source containing
+            // "&lt;script&gt;" would be decoded to a real <script> element
+            // once assigned to innerHTML (DOM-based XSS).
             html = html.replace(
                 /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
-                (match, code) => {
-                    const decodedCode = code
-                        .replace(/&lt;/g, '<')
-                        .replace(/&gt;/g, '>')
-                        .replace(/&amp;/g, '&')
-                        .replace(/&quot;/g, '"')
-                        .replace(/&#39;/g, "'");
-                    return `<div class="mermaid">${decodedCode}</div>`;
-                }
+                (match, code) => `<div class="mermaid">${code}</div>`
             );
             
             return html;
         }
         
+        // Escape a value before interpolating it into an innerHTML-bound
+        // template string, so arbitrary text (error messages, diagram
+        // source on a render failure, etc.) can never be parsed as markup.
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Render each diagram IN PLACE with mermaid.run(): mermaid reads the node's own
+        // content and writes the SVG back itself (securityLevel: 'strict' set in
+        // mermaid.initialize), so no diagram text or SVG string ever passes through this
+        // page's code or an innerHTML assignment.
         async function renderMermaidDiagrams() {
             const mermaidElements = document.querySelectorAll('.mermaid');
             
@@ -10418,11 +10438,14 @@
                 element.id = id;
                 
                 try {
-                    const { svg } = await mermaid.render(id + '-svg', element.textContent);
-                    element.innerHTML = svg;
+                    await mermaid.run({ nodes: [element] });
                 } catch (error) {
                     console.error('Mermaid rendering error:', error);
-                    element.innerHTML = `<pre>Error rendering diagram:\n${element.textContent}</pre>`;
+                    // Show the diagram source as plain text (textContent, never innerHTML).
+                    const failedSource = element.textContent;
+                    const pre = document.createElement('pre');
+                    pre.textContent = 'Error rendering diagram:\n' + failedSource;
+                    element.replaceChildren(pre);
                 }
             }
         }
@@ -10436,7 +10459,7 @@
             content.innerHTML = `
                 <div class="error">
                     <h3>⚠️ Error</h3>
-                    <p>${message}</p>
+                    <p>${escapeHtml(message)}</p>
                 </div>
             `;
         }

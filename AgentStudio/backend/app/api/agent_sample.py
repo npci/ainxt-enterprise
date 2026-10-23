@@ -56,6 +56,7 @@ from app.core import workflow_repo
 from app.models import AuthenticatedUser
 from core.file_validator import validate_upload
 from core.logger import logger
+from core.path_safety import safe_join_path
 
 router = APIRouter()
 
@@ -109,8 +110,12 @@ def _agent_sample_dir(agent_id: str) -> Path:
     safe = "".join(c for c in (agent_id or "") if c.isalnum() or c in ("-", "_"))
     if not safe:
         raise HTTPException(status_code=400, detail="Invalid agent id.")
-    d = _samples_root() / safe
-    return d
+    try:
+        # normpath + startswith containment check (core.path_safety) — the form
+        # CodeQL recognises as a path-injection barrier.
+        return Path(safe_join_path(str(_samples_root()), safe))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid agent id.")
 
 
 def _extension(filename: str) -> str:
@@ -187,7 +192,10 @@ async def upload_agent_sample(
     # Canonical filename is ``sample.<ext>``: the sandbox prompt block
     # references the file only via SAMPLE_DOC_PATH, so a stable name
     # keeps logs and stack traces readable.
-    dest = agent_dir / f"sample.{ext}"
+    try:
+        dest = Path(safe_join_path(str(agent_dir), f"sample.{ext}"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid sample destination.")
     try:
         # Guard against a symlink-style traversal — the resolved path
         # must still live under the agent's folder.
@@ -350,7 +358,10 @@ def _workflow_node_sample_dir(workflow_id: str, node_id: str) -> Path:
     safe_node = "".join(c for c in (node_id or "") if c.isalnum() or c in ("-", "_"))
     if not safe_wf or not safe_node:
         raise HTTPException(status_code=400, detail="Invalid workflow / node id.")
-    return _workflow_samples_root() / safe_wf / safe_node
+    try:
+        return Path(safe_join_path(str(_workflow_samples_root()), safe_wf, safe_node))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid workflow / node id.")
 
 
 async def _load_owned_workflow(workflow_id: str, user_id: str) -> dict:
@@ -409,7 +420,10 @@ async def upload_workflow_node_sample(
             )
     node_dir.mkdir(parents=True, exist_ok=True)
 
-    dest = node_dir / f"sample.{ext}"
+    try:
+        dest = Path(safe_join_path(str(node_dir), f"sample.{ext}"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid sample destination.")
     try:
         dest.resolve().relative_to(node_dir.resolve())
     except ValueError:

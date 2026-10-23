@@ -25,6 +25,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from core.logger import logger
+from core.error_utils import safe_error_detail
 
 router = APIRouter(prefix="/webhooks", tags=["sdlc"])
 
@@ -271,7 +272,7 @@ async def jira_webhook(request: Request):
             )
         except RuntimeError as _brd_err:
             logger.warning(f"webhooks/jira: BRD pipeline enqueue failed: {_brd_err}")
-            return {"accepted": False, "jira_key": issue_dict["key"], "reason": str(_brd_err)}
+            return {"accepted": False, "jira_key": issue_dict["key"], "reason": safe_error_detail(_brd_err)}
 
         logger.info(
             f"webhooks/jira: BRD→FSD pipeline enqueued for {issue_dict['key']} "
@@ -355,7 +356,7 @@ async def jira_webhook(request: Request):
             )
         except Exception:
             pass
-        return {"accepted": False, "jira_key": _key, "reason": str(_rate_err)}
+        return {"accepted": False, "jira_key": _key, "reason": safe_error_detail(_rate_err)}
 
     logger.info(f"webhooks/jira: enqueued {pipeline} pipeline for {issue_dict['key']} job={job_id}")
 

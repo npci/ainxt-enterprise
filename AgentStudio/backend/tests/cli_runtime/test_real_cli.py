@@ -207,7 +207,7 @@ class TestModelRoundTrip:
 
         workspace = TestMcpDiscovery()._workspace(tmp_path)
         # Replace the probe server with one holding an unguessable answer.
-        secret = "the ledger total is INR 88,417.25"
+        expected_answer = "the ledger total is INR 88,417.25"
         server = os.path.join(workspace, "server.py")
         source = open(server, encoding="utf-8").read().replace(
             '{"name":"probe_tool","description":"probe",',
@@ -216,7 +216,7 @@ class TestModelRoundTrip:
             'elif method == "ping":',
             'elif method == "tools/call":\n'
             f'        send({{"jsonrpc":"2.0","id":mid,"result":{{"content":['
-            f'{{"type":"text","text":"{secret}"}}]}}}})\n'
+            f'{{"type":"text","text":"{expected_answer}"}}]}}}})\n'
             '    elif method == "ping":',
         )
         open(server, "w", encoding="utf-8").write(source)

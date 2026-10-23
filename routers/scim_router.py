@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from core.logger import logger, mask_email
+from core.error_utils import safe_error_detail
 
 router = APIRouter(prefix="/scim/v2", tags=["scim"])
 
@@ -196,7 +197,7 @@ async def create_user(request: Request, _: bool = Depends(_require_scim_token)):
     except Exception as exc:
         db.rollback()
         logger.error(f"scim: create_user failed → {exc}")
-        return _scim_error(500, str(exc))
+        return _scim_error(500, safe_error_detail(exc))
     finally:
         db.close()
 
@@ -228,7 +229,7 @@ async def replace_user(user_id: str, request: Request, _: bool = Depends(_requir
         return _user_to_scim(u)
     except Exception as exc:
         db.rollback()
-        return _scim_error(500, str(exc))
+        return _scim_error(500, safe_error_detail(exc))
     finally:
         db.close()
 
@@ -265,7 +266,7 @@ async def patch_user(user_id: str, request: Request, _: bool = Depends(_require_
         return _user_to_scim(u)
     except Exception as exc:
         db.rollback()
-        return _scim_error(500, str(exc))
+        return _scim_error(500, safe_error_detail(exc))
     finally:
         db.close()
 

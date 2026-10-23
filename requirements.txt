@@ -22,18 +22,19 @@ python-multipart==0.0.31
 python-dotenv==1.2.2
 pydantic==2.13.4
 pydantic-settings==2.14.2
-anyio==4.13.0
+anyio==4.14.2
 httpx==0.28.1
-requests==2.33.1
+# >=2.34.2 is required by the pinned docling-core commit (see the docling pins below).
+requests>=2.34.2,<3.0.0
 Jinja2==3.1.6
 slowapi==0.1.9
 starlette==1.3.1
-aiohttp==3.14.3
+aiohttp==3.14.4
 aiohttp-retry==2.9.1
 orjson==3.11.9
 
 # ── Auth, crypto, and compliance ────────────────────────────────
-PyJWT==2.13.0
+PyJWT==2.15.0
 passlib==1.7.4
 bcrypt==4.0.1
 cryptography==50.0.0
@@ -102,8 +103,8 @@ tenacity==9.1.4
 # (pypdfium2 + pypdf + pdfplumber + markitdown — all permissive: BSD-3-Clause /
 # Apache-2.0 / MIT).
 pypdfium2==4.30.0
-pypdf==6.16.1
-pillow==12.3.0
+pypdf==6.21.1
+pillow==13.0.0
 pandas==2.3.3
 openpyxl==3.1.5
 xlrd==2.0.2
@@ -118,9 +119,18 @@ markdown==3.10.2
 # docling — ML layout/table parser (DocLayNet + TableFormer) used by
 # core/docling_parser.py and services/embed_svc/parser.py when
 # USE_DOCLING_PARSER=1. Previously used by the code but never pinned here.
-# Floor-pinned, not exact, since the project moves fast and newer releases
-# are expected to keep working.
-docling>=2.15,<3.0
+# Pinned to an upstream commit (docling-slim[standard] is what the `docling`
+# meta-package installs; the import name is still `docling`): every released
+# docling (latest 2.141.0) caps pillow<13, which blocks the Pillow 13.0.0 security
+# fixes above. Commit ed66a3c ("fix: support Pillow 13 and integer PNG images",
+# #4929) is 2.141.0 + four small perf fixes + that change, and relaxes the cap to
+# pillow<14. TODO: once a docling release newer than 2.141.0 is on PyPI, replace
+# this line with `docling>=2.142,<3.0`.
+docling-slim[standard] @ https://github.com/docling-project/docling/archive/ed66a3c8520933221c977292b875a0d8d939b6fd.zip
+# docling-core caps pillow<13 in every release too (latest 2.103.1). Pinned to upstream
+# commit e1b282a ("fix: support Pillow 13 and integer PNG exports", #907; 2.103.1 plus a
+# DocLang 0.8 caption change). TODO: drop with the docling-slim pin above once released.
+docling-core[chunking] @ https://github.com/docling-project/docling-core/archive/e1b282ab8d61b19f458c99ef7d6549f6a03fb86f.zip
 # Pinned exact + CPU-only build so docling's own unconstrained `torch`
 # requirement resolves to these instead of the default CUDA-enabled Linux
 # wheel — see the --extra-index-url note above. Linux-only marker: torch's

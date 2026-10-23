@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import Response
 from pydantic import BaseModel
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from app.models import AuthenticatedUser
 from app.core import workflow_repo
 from app.api.deps import require_access, require_admin
@@ -618,7 +619,7 @@ async def upload_catalog_skill(
             bundle_written = await workflow_repo.upsert_skill_files(name, bundle_files)
         except Exception as exc:
             logger.exception(f"[AGENT] skill_upload: failed to persist bundled files for {name}")
-            bundle_error = str(exc)
+            bundle_error = safe_error_detail(exc)
 
     # Governance: uploaded skills require HOD approval before use, same as
     # AI-generated ones.

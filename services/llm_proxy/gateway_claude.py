@@ -611,7 +611,8 @@ class ClaudeGateway:
                     )
             except Exception as e:
                 logger.error(f"{request_id} → tool-use round {round_num} failed: {e}")
-                return f"[ERROR generating response: {e}]"
+                from core.error_utils import safe_error_detail
+                return f"[ERROR generating response: {safe_error_detail(e)}]"
 
             # Collect tool_use blocks from response
             tool_use_blocks = [b for b in response.content if b.type == "tool_use"]

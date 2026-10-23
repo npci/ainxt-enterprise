@@ -21,6 +21,7 @@ from app.api.deps import require_access
 
 router = APIRouter()
 from core.logger import logger
+from core.error_utils import safe_error_detail
 # Pseudo-model id for the Chat router's "Auto" entry. Never subject to
 # governance filtering — it's a routing hint, not a real catalogue entry.
 _PSEUDO_MODEL_AUTO = "auto"
@@ -367,12 +368,14 @@ def _fetch_local_models() -> tuple[list[str], str]:
     try:
         from gateway_local_llm import get_local_gateway as _get_local_gw  # type: ignore
     except Exception as e:
-        return [], f"gateway_local_llm import failed: {e}"
+        logger.warning(f"[AGENT] gateway_local_llm import failed: {e}")
+        return [], "gateway_local_llm import failed (see server log)"
     try:
         ids = list(_get_local_gw().list_models() or [])
         return ids, ""
     except Exception as e:
-        return [], f"local list_models() failed: {e}"
+        logger.warning(f"[AGENT] local list_models() failed: {e}")
+        return [], "local list_models() failed (see server log)"
 
 
 def _ensure_local_provider_group(providers: list, local_ids: list[str]) -> list:
@@ -651,7 +654,7 @@ async def _fallback_openai_compatible_discovery(base_url: str):
             "default_model": None,
             "providers": [],
             "models": [],
-            "error": str(e),
+            "error": safe_error_detail(e),
         }
 
 
@@ -830,8 +833,8 @@ async def generate_workflow(
             raise ValueError("LLM did not include an end node")
         return GenerateWorkflowResponse(name=name, graph_data={"nodes": nodes, "edges": edges})
     except json.JSONDecodeError as e:
-        raise HTTPException(status_code=422, detail=f"LLM returned invalid JSON: {e}")
+        raise HTTPException(status_code=422, detail=f"LLM returned invalid JSON: {safe_error_detail(e)}")
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=safe_error_detail(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))

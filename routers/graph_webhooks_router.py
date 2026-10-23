@@ -26,14 +26,21 @@ from core.logger import logger
 router = APIRouter(prefix="/webhooks", tags=["graph"])
 
 # users/{org}/onlineMeetings/{meeting}/transcripts/{tid} — with ('id') or /id forms
-_ORG_RE     = re.compile(r"users[/(]'?([^/')]+)'?[)/]")
-_MEETING_RE = re.compile(r"onlineMeetings[/(]'?([^/')]+)'?[)/]?")
+# The id class also excludes "(" so a run of "users(users(..." cannot make every start
+# position rescan the rest of the string (polynomial backtracking, py/polynomial-redos).
+_ORG_RE     = re.compile(r"users[/(]'?([^/()']+)'?[)/]")
+_MEETING_RE = re.compile(r"onlineMeetings[/(]'?([^/()']+)'?[)/]?")
 
 
 def _parse_resource(resource: str) -> tuple[Optional[str], Optional[str]]:
     """Extract (organizer_id, meeting_id) from a Graph transcript resource path."""
-    org = _ORG_RE.search(resource or "")
-    mtg = _MEETING_RE.search(resource or "")
+    # Cap length before regex matching: real Graph resource paths are short
+    # URLs, and capping removes any risk of the above patterns' backtracking
+    # becoming expensive on a long, crafted `resource` value (CodeQL
+    # py/polynomial-redos). This can never reject a legitimate webhook.
+    resource = (resource or "")[:512]
+    org = _ORG_RE.search(resource)
+    mtg = _MEETING_RE.search(resource)
     return (org.group(1) if org else None, mtg.group(1) if mtg else None)
 
 

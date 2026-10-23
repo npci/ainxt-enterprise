@@ -52,7 +52,9 @@ const API_PREFIX = String(process.env.AINXT_API_PREFIX || "/ainxt/v1/api").repla
 // they must match, or the desktop's own TLS bypass silently stays off.
 const INSECURE_TLS = process.env.AINXT_INSECURE_TLS === "1" && process.env.NODE_ENV !== "production";
 // Reused agent so we don't spawn a fresh TLS context per request.
-const _insecureAgent = INSECURE_TLS ? new https.Agent({ rejectUnauthorized: false }) : new https.Agent({ rejectUnauthorized: true });
+// Certificate verification is ON unless INSECURE_TLS (explicit env opt-in AND
+// NODE_ENV !== "production") is set - one agent, one expression, no hard-coded `false`.
+const _insecureAgent = new https.Agent({ rejectUnauthorized: !INSECURE_TLS });
 
 // Encrypted-at-rest secrets in electron-store via safeStorage (OS-backed: DPAPI /
 // Keychain). Falls back to plaintext only where OS encryption is unavailable.

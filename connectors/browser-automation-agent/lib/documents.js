@@ -247,7 +247,11 @@ export async function readPdfData(data, { pages, maxChars = DEFAULT_MAX_CHARS } 
 const FETCH_CREDS_SAME_ORIGIN = "include";
 const FETCH_CREDS_CROSS_ORIGIN = "omit";
 
-async function fetchPdfBytes(url, signal, tabOrigin = null) {
+async function fetchPdfBytes(url, signal, tabOrigin = null, policy = null) {
+  // Defense-in-depth: re-validate right at the fetch call, not just at the
+  // readDocument() entry point -- so this sink is safe even if a future
+  // caller forgets the upstream isUrlInScope() check (SSRF / CWE-918).
+  if (!isUrlInScope(url, policy)) throw new Error("read_document: this document's host is blocked by your site policy, is a private/loopback address, or the URL could not be parsed");
   const resp = await fetch(url, { credentials: sameOriginAs(url, tabOrigin) ? FETCH_CREDS_SAME_ORIGIN : FETCH_CREDS_CROSS_ORIGIN, signal });
   if (!resp.ok) throw new Error(`could not fetch the PDF (HTTP ${resp.status})`);
   const len = Number(resp.headers.get("content-length") || 0);
@@ -262,7 +266,11 @@ async function fetchPdfBytes(url, signal, tabOrigin = null) {
 // Export endpoints ride the user's own cookies. A blocked export (view-only
 // with download disabled, or signed out) answers 403 — or 200 with an HTML
 // login/interstitial page — so treat an HTML body as blocked too (FR7).
-async function fetchExport(url, signal, what) {
+async function fetchExport(url, signal, what, policy = null) {
+  // Defense-in-depth: these URLs are built internally from fixed Google
+  // export-endpoint templates (host is never attacker-controlled), but
+  // re-validate anyway so this sink stands on its own (SSRF / CWE-918).
+  if (!isUrlInScope(url, policy)) throw new Error(`read_document: ${what} export URL is blocked by your site policy, is a private/loopback address, or could not be parsed`);
   const resp = await fetch(url, { credentials: "include", signal });
   if (!resp.ok) {
     throw new Error(
@@ -276,9 +284,9 @@ async function fetchExport(url, signal, what) {
   return (await resp.text()).slice(0, MAX_DOC_CHARS);
 }
 
-async function readGoogleDoc(id, { maxChars, find, signal }) {
+async function readGoogleDoc(id, { maxChars, find, signal, policy = null }) {
   const text = await fetchExport(
-    `https://docs.google.com/document/d/${id}/export?format=txt`, signal, "Google Doc");
+    `https://docs.google.com/document/d/${id}/export?format=txt`, signal, "Google Doc", policy);
   if (String(find || "").trim()) {
     const res = searchTextLines(text.trim(), find, { maxChars, kindLabel: "Google Doc" });
     return { header: res.header, text: res.text, meta: { format: "gdoc", chars: text.length } };
@@ -287,9 +295,9 @@ async function readGoogleDoc(id, { maxChars, find, signal }) {
   return { header, text: text.trim(), meta: { format: "gdoc", chars: text.length } };
 }
 
-async function readGoogleSlides(id, { maxChars, find, signal }) {
+async function readGoogleSlides(id, { maxChars, find, signal, policy = null }) {
   const text = await fetchExport(
-    `https://docs.google.com/presentation/d/${id}/export/txt`, signal, "Google Slides");
+    `https://docs.google.com/presentation/d/${id}/export/txt`, signal, "Google Slides", policy);
   if (String(find || "").trim()) {
     const res = searchTextLines(text.trim(), find, { maxChars, kindLabel: "Google Slides export" });
     return { header: res.header, text: res.text, meta: { format: "gslides", chars: text.length } };
@@ -304,7 +312,9 @@ async function readGoogleSlides(id, { maxChars, find, signal }) {
 // degrades.
 async function listSheetTabs(id, signal) {
   try {
-    const resp = await fetch(`https://docs.google.com/spreadsheets/d/${id}/htmlview`, {
+    // The host is fixed; only a document id goes into the path, and it is encoded so it
+    // cannot add path segments, a query string, or a different host.
+    const resp = await fetch(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(String(id))}/htmlview`, {
       credentials: "include", signal,
     });
     if (!resp.ok) return [];
@@ -315,7 +325,15 @@ async function listSheetTabs(id, signal) {
     // iteration count.
     const matches = [...html.matchAll(/id="sheet-button-(\d+)"[^>]*>([\s\S]*?)<\/li>/g)];
     matches.slice(0, MAX_SHEET_TABS).forEach((m) => {
-      const name = m[2].replace(/<[^>]*>/g, "").trim();
+      // Strip tags to a fixed point: a single pass can leave a reconstituted
+      // tag behind on overlapping/nested angle brackets (CodeQL
+      // js/incomplete-multi-character-sanitization).
+      let name = m[2];
+      for (let prev = null; prev !== name; ) {
+        prev = name;
+        name = name.replace(/<[^>]*>/g, "");
+      }
+      name = name.trim();
       if (name) tabs.push({ name, gid: m[1] });
     });
     return tabs;
@@ -554,7 +572,7 @@ function searchTextLines(text, needle, { maxChars, kindLabel }) {
   };
 }
 
-async function readGoogleSheet(det, { sheet, range, find, maxChars, signal }) {
+async function readGoogleSheet(det, { sheet, range, find, maxChars, signal, policy = null }) {
   const tabs = await listSheetTabs(det.id, signal);
   let gid = det.gid || "0";
   let sheetName = null;
@@ -570,7 +588,7 @@ async function readGoogleSheet(det, { sheet, range, find, maxChars, signal }) {
   }
 
   const csv = await fetchExport(
-    `https://docs.google.com/spreadsheets/d/${det.id}/export?format=csv&gid=${gid}`, signal, "Google Sheet");
+    `https://docs.google.com/spreadsheets/d/${det.id}/export?format=csv&gid=${gid}`, signal, "Google Sheet", policy);
   const rows = parseCsv(csv);
 
   // find="text": search the fetched sheet in memory. Other tabs would each
@@ -659,7 +677,14 @@ function officeDownloadUrl(u) {
   );
 }
 
-async function fetchOfficeBytes(url, signal, tabOrigin = null) {
+async function fetchOfficeBytes(url, signal, tabOrigin = null, policy = null) {
+  // Defense-in-depth: re-validate right at the fetch call (SSRF / CWE-918).
+  // `redirect: "follow"` in particular means the final destination host can
+  // differ from `url` entirely, so this check alone doesn't cover a
+  // malicious redirect target -- but it does ensure the INITIAL request
+  // target is never a private/loopback address or outside the user's
+  // configured site policy.
+  if (!isUrlInScope(url, policy)) throw new Error("read_document: this document's host is blocked by your site policy, is a private/loopback address, or the URL could not be parsed");
   const resp = await fetch(url, { credentials: sameOriginAs(url, tabOrigin) ? "include" : "omit", signal, redirect: "follow" });
   if (!resp.ok) {
     throw new Error(
@@ -925,8 +950,8 @@ async function readPptx(bytes, entries, { pages, maxChars }) {
   return { header, text: chunks.join("\n\n"), meta: { format: "pptx", totalSlides: total, shown } };
 }
 
-async function readOfficeDocument(det, { pages, sheet, range, find, maxChars, signal, tabOrigin }) {
-  const bytes = await fetchOfficeBytes(officeDownloadUrl(det.url), signal, tabOrigin);
+async function readOfficeDocument(det, { pages, sheet, range, find, maxChars, signal, tabOrigin, policy = null }) {
+  const bytes = await fetchOfficeBytes(officeDownloadUrl(det.url), signal, tabOrigin, policy);
   const entries = listZipEntries(bytes);
   // Sniff the real type from the zip contents — the URL marker is advisory
   // (a :w: link can point at anything the user renamed).
@@ -960,12 +985,12 @@ export async function readDocument({ url, pages, sheet, range, find, maxChars = 
   }
   let res;
   if (det.kind === "pdf") {
-    const data = await fetchPdfBytes(u, signal, tabOrigin);
+    const data = await fetchPdfBytes(u, signal, tabOrigin, sitePolicy);
     res = await readPdfData(data, { pages, maxChars });
-  } else if (det.kind === "gdoc") res = await readGoogleDoc(det.id, { maxChars, find, signal });
-  else if (det.kind === "gslides") res = await readGoogleSlides(det.id, { maxChars, find, signal });
-  else if (det.kind === "gsheet") res = await readGoogleSheet(det, { sheet, range, find, maxChars, signal });
-  else if (det.kind === "office") res = await readOfficeDocument({ ...det, url: det.url || u }, { pages, sheet, range, find, maxChars, signal, tabOrigin });
+  } else if (det.kind === "gdoc") res = await readGoogleDoc(det.id, { maxChars, find, signal, policy: sitePolicy });
+  else if (det.kind === "gslides") res = await readGoogleSlides(det.id, { maxChars, find, signal, policy: sitePolicy });
+  else if (det.kind === "gsheet") res = await readGoogleSheet(det, { sheet, range, find, maxChars, signal, policy: sitePolicy });
+  else if (det.kind === "office") res = await readOfficeDocument({ ...det, url: det.url || u }, { pages, sheet, range, find, maxChars, signal, tabOrigin, policy: sitePolicy });
   else throw new Error(`read_document: unsupported document kind "${det.kind}"`);
 
   // find on a kind with no search support (PDF would need every page

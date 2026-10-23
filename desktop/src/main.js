@@ -220,9 +220,9 @@ const DEVTOOLS = isDev || process.env.AINXT_DEVTOOLS === "1";
 const INSECURE_TLS = process.env.AINXT_TLS_INSECURE === "1" && process.env.NODE_ENV !== "production";
 // Shared agent for main-process Node https calls (SSO exchange/refresh). Node's
 // https has its own trust store, so the Chromium switch below does NOT cover it.
-const _insecureHttpsAgent = INSECURE_TLS
-? new (require("https").Agent)({ rejectUnauthorized: false })
-: new (require("https").Agent)({ rejectUnauthorized: true });
+// Certificate verification is ON unless INSECURE_TLS (explicit env opt-in AND
+// NODE_ENV !== "production") is set - one agent, one expression, no hard-coded `false`.
+const _insecureHttpsAgent = new (require("https").Agent)({ rejectUnauthorized: !INSECURE_TLS });
 if (INSECURE_TLS) {
 // Applies to the underlying Chromium net stack (covers loadURL + fetch).
 app.commandLine.appendSwitch("ignore-certificate-errors");
@@ -918,9 +918,75 @@ const ALLOWED_COMMANDS = new Set([
 "node", "java", "go", "cargo",
 ]);
 
+// Shell metacharacters that would let a command string smuggle a SECOND,
+// non-allow-listed command past the basename-only check below (command
+// chaining/substitution: `;`, `&&`, `||`, `|`, backticks, `$(...)`, I/O
+// redirection, newlines). execSync runs this string through a real shell
+// (`/bin/sh -c` / `cmd.exe /c`), so "git status; rm -rf /" would otherwise
+// pass the check (first word is the allow-listed "git") and then execute
+// the injected command too (CWE-78).
+const _SHELL_METACHAR_RE = /[;&|`$(){}<>\n\r]/;
+
 function _isSafeCommand(cmd) {
+if (typeof cmd !== "string" || !cmd.trim()) return false;
+if (_SHELL_METACHAR_RE.test(cmd)) return false;
 const first = cmd.trim().split(/\s+/)[0].replace(/^.*[/\\]/, "");  // basename only
 return ALLOWED_COMMANDS.has(first);
+}
+
+// Split an ALREADY-VALIDATED command string (see _isSafeCommand: no shell
+// metacharacters) into argv, honouring simple single/double quotes.
+function _tokenizeCommand(cmd) {
+const out = [];
+let cur = "";
+let quote = null;
+let started = false;
+for (const ch of String(cmd)) {
+if (quote) {
+if (ch === quote) quote = null;
+else cur += ch;
+} else if (ch === '"' || ch === "'") {
+quote = ch;
+started = true;
+} else if (/\s/.test(ch)) {
+if (started || cur) { out.push(cur); cur = ""; started = false; }
+} else {
+cur += ch;
+}
+}
+if (started || cur) out.push(cur);
+return out;
+}
+
+// On Windows these are .cmd shims, which Node refuses to spawn without a shell.
+const _WIN_SHELL_SHIMS = new Set(["npm", "yarn", "mvn", "gradle"]);
+
+// Run an allow-listed command WITHOUT a shell: the binary comes from the
+// ALLOWED_COMMANDS constant (never the caller's path), arguments are an argv array,
+// so nothing the caller typed is ever interpreted by /bin/sh or cmd.exe (CWE-78).
+function _runAllowedCommand(cmd, cwd) {
+const { execFileSync } = require("child_process");
+const argv = _tokenizeCommand(cmd);
+const base = (argv[0] || "").replace(/^.*[/\\]/, "");
+const bin = [...ALLOWED_COMMANDS].find((c) => c === base);
+if (!bin) throw new Error("Command not allowed.");
+const opts = { cwd: cwd || process.env.HOME, encoding: "utf-8", timeout: 15000 };
+if (process.platform === "win32" && _WIN_SHELL_SHIMS.has(bin)) {
+// .cmd shims need a shell on Windows. `bin` comes from the allow-list
+// constant (never the caller's string, which could name a different path
+// such as "C:\\somewhere\\npm"). Arguments are passed as an ARRAY to
+// execFileSync with shell:true rather than manually joined into a single
+// command string: Node quotes/escapes each array element itself before
+// handing the line to cmd.exe, so nothing the caller typed can be
+// interpreted as a shell metacharacter (CWE-78). The character allow-list
+// below is kept as defense-in-depth on top of that.
+const shimArgs = argv.slice(1);
+if (!shimArgs.every((a) => /^[A-Za-z0-9_@+=:,./\\-]*$/.test(a))) {
+throw new Error("Unsupported characters in an argument for this command on Windows.");
+}
+return execFileSync(bin, shimArgs, { ...opts, shell: true });
+}
+return execFileSync(bin, argv.slice(1), opts);
 }
 
 // SSE sessions for the MCP-protocol view of the local tools (used by the Buddy
@@ -988,17 +1054,45 @@ throw new Error(`Desktop document extraction dependency '${name}' is not install
 }
 }
 
+// Repeat a replacement until the string stops changing. A single pass of a
+// multi-character pattern (e.g. /<[^>]*>/) can leave behind a freshly-formed
+// match (e.g. "<scr<b>ipt>" -> "<script>"), which is exactly the
+// js/incomplete-multi-character-sanitization problem.
+function _replaceUntilStable(s, re, replacement) {
+let prev;
+let out = String(s);
+do {
+prev = out;
+out = out.replace(re, replacement);
+} while (out !== prev);
+return out;
+}
+function _stripTagsFully(s) {
+return _replaceUntilStable(s, /<[^>]*>/g, "");
+}
+// Remove whole <script>/<style> blocks to a fixed point.
+function _stripScriptStyleBlocks(s) {
+return _replaceUntilStable(
+_replaceUntilStable(s, /<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, ""),
+/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi,
+""
+);
+}
+
 function _decodeXmlText(s) {
-return String(s || "")
+// Tags are stripped to a fixed point both BEFORE and AFTER entity decoding:
+// decoding after a single strip pass would let an encoded "&lt;script&gt;"
+// reconstruct a literal "<script>" tag that never gets removed.
+let t = String(s || "")
 .replace(/<w:tab\/>/g, "\t")
-.replace(/<w:br\/>/g, "\n")
-.replace(/<[^>]+>/g, "")
+.replace(/<w:br\/>/g, "\n");
+t = _stripTagsFully(t)
 .replace(/&lt;/g, "<")
 .replace(/&gt;/g, ">")
 .replace(/&quot;/g, '"')
 .replace(/&apos;/g, "'")
-.replace(/&amp;/g, "&")
-.trim();
+.replace(/&amp;/g, "&");
+return _stripTagsFully(t).trim();
 }
 
 // Trims text to EXTRACT_TEXT_LIMIT and returns { text, warning }. `warning` is
@@ -1222,11 +1316,14 @@ if (!slideFile) { warnings.push(`Slide file not found: ${zipPath}`); continue; }
 const xml = await slideFile.async("string");
 
 // Strip XML tags; decode common entities; collapse whitespace.
-const raw = xml
-.replace(/<a:t[^>]*>/gi, " ")   // text run open tag → space separator
-.replace(/<[^>]+>/g, "")
+// Tags are stripped both BEFORE and AFTER entity decoding: decoding after
+// a single strip pass would let an encoded "&lt;script&gt;" reconstruct a
+// literal tag that never gets removed (incomplete sanitization).
+const raw = _stripTagsFully(
+_stripTagsFully(xml.replace(/<a:t[^>]*>/gi, " "))   // text run open tag -> space separator
 .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
 .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&")
+)
 .replace(/\s+/g, " ").trim();
 
 if (raw) textParts.push(`### Slide ${i + 1}\n${raw}`);
@@ -1269,17 +1366,21 @@ return { text: _trimmed.text, warnings: _trimmed.warning ? [_trimmed.warning] : 
 // No external dependency — pure regex, sufficient for model consumption.
 async function _extractHtml(filePath) {
 const raw = await fs.promises.readFile(filePath, "utf-8");
-const text = raw
-.replace(/<script[\s\S]*?<\/script>/gi, "")   // remove scripts
-.replace(/<style[\s\S]*?<\/style>/gi, "")     // remove styles
+// Tags are stripped both BEFORE and AFTER entity decoding: decoding after
+// a single strip pass would let an encoded "&lt;script&gt;" reconstruct a
+// literal tag that never gets removed (incomplete sanitization).
+// Scripts/styles/tags are removed to a fixed point, both before and after
+// entity decoding (see _replaceUntilStable).
+const _noBlocks = _stripScriptStyleBlocks(raw)   // remove scripts + styles
 .replace(/<br\s*\/?>/gi, "\n")
 .replace(/<\/p>/gi, "\n").replace(/<\/div>/gi, "\n")
-.replace(/<\/h[1-6]>/gi, "\n").replace(/<\/li>/gi, "\n")
-.replace(/<[^>]+>/g, "")
+.replace(/<\/h[1-6]>/gi, "\n").replace(/<\/li>/gi, "\n");
+const _decoded = _stripTagsFully(_noBlocks)
 .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
 .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
 .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
-.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)));
+const text = _stripTagsFully(_stripScriptStyleBlocks(_decoded))
 .replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 const _trimmed = _trimExtractText(text || "[HTML file appears empty]");
 return { text: _trimmed.text, warnings: _trimmed.warning ? [_trimmed.warning] : [] };
@@ -1296,14 +1397,20 @@ const contentFile = zip.file("content.xml");
 if (!contentFile) return { text: "[ODT file has no content.xml — may be corrupt]", warnings: ["content.xml not found"] };
 const xml = await contentFile.async("string");
 // ODF text:p → paragraph, text:tab → tab, text:line-break → newline.
-// Strip all remaining tags and decode XML entities.
-const text = xml
+// Strip all remaining tags and decode XML entities. Tags are stripped both
+// before AND after decoding: decoding after a single strip pass would let
+// an encoded "&lt;script&gt;" reconstruct a literal tag that never gets
+// removed (incomplete sanitization).
+const text = _stripTagsFully(
+_stripTagsFully(
+xml
 .replace(/<text:line-break[^>]*\/>/gi, "\n")
 .replace(/<\/text:p>/gi, "\n")
 .replace(/<text:tab[^>]*\/>/gi, "\t")
-.replace(/<[^>]+>/g, "")
+)
 .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
 .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&")
+)
 .replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 const _trimmed = _trimExtractText(text || "[ODT file appears empty]");
 return { text: _trimmed.text, warnings: _trimmed.warning ? [_trimmed.warning] : [] };
@@ -1344,8 +1451,14 @@ cellMatches.forEach((cellXml) => {
   const repeat = repeatMatch ? Math.min(parseInt(repeatMatch[1], 10), 50) : 1;
   // Extract cell text from <text:p> elements
   const pMatches = cellXml.match(/<text:p[^>]*>([\s\S]*?)<\/text:p>/gi) || [];
+  // Tags are stripped both before AND after entity decoding: decoding
+  // after a single strip pass would let an encoded "&lt;script&gt;"
+  // reconstruct a literal tag that never gets removed.
   const cellText = pMatches
-    .map((p) => p.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").trim())
+    .map((p) => _stripTagsFully(
+  _stripTagsFully(p)
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&")
+).trim())
     .join(" ");
   for (let r = 0; r < repeat; r++) cells.push(cellText);
 });
@@ -1897,17 +2010,30 @@ try {
 }
 }
 if (tool === "search_files") {
-const { execSync } = require("child_process");
+const { execFileSync } = require("child_process");
 const max = Math.min(input.max_results || 20, 50);
-const raw = execSync(`grep -rl -m ${max} "${String(input.pattern).replace(/"/g, '\\"')}" "${input.folder}"`,
-  { encoding: "utf-8", timeout: 5000 }).trim();
+// execFileSync with an argv array (not execSync with an interpolated
+// string) never invokes a shell, so `pattern`/`folder` can contain
+// arbitrary characters -- including shell metacharacters -- without any
+// risk of command injection (CWE-78). Quoting/escaping a shell string is
+// never fully safe for untrusted input; avoiding the shell entirely is.
+let raw = "";
+try {
+  raw = execFileSync(
+    "grep",
+    ["-rl", "-m", String(max), "--", String(input.pattern), String(input.folder)],
+    { encoding: "utf-8", timeout: 5000 }
+  ).trim();
+} catch (grepErr) {
+  // grep exits 1 (non-error) when no matches are found.
+  if (grepErr.status !== 1) throw grepErr;
+}
 const files = raw ? raw.split("\n").filter(Boolean) : [];
 return { success: true, result: { files, count: files.length } };
 }
 if (tool === "execute_terminal") {
 if (!_isSafeCommand(input.command)) return { success: false, error: `Command not allowed.` };
-const { execSync } = require("child_process");
-const output = execSync(input.command, { cwd: input.cwd || process.env.HOME, encoding: "utf-8", timeout: 15000 });
+const output = _runAllowedCommand(input.command, input.cwd);
 return { success: true, result: { output: output.slice(0, 10000) } };
 }
 return { success: false, error: `Unknown tool: ${tool}` };
@@ -2353,12 +2479,28 @@ req.on("end", async () => {
       result = { entries };
 
     } else if (tool === "search_files") {
-      const { execSync } = require("child_process");
+      const { execFileSync } = require("child_process");
       const max = Math.min(input.max_results || 20, 50);
-      const raw = execSync(
-        `grep -rl --include="*.py" --include="*.js" --include="*.ts" --include="*.java" --include="*.go" -m ${max} "${input.pattern.replace(/"/g, '\\"')}" "${input.folder}"`,
-        { encoding: "utf-8", timeout: 5000 }
-      ).trim();
+      // execFileSync with an argv array (not execSync with an interpolated
+      // string) never invokes a shell, so `pattern`/`folder` can contain
+      // arbitrary characters -- including shell metacharacters -- without
+      // any risk of command injection (CWE-78).
+      let raw = "";
+      try {
+        raw = execFileSync(
+          "grep",
+          [
+            "-rl",
+            "--include=*.py", "--include=*.js", "--include=*.ts", "--include=*.java", "--include=*.go",
+            "-m", String(max),
+            "--", String(input.pattern), String(input.folder),
+          ],
+          { encoding: "utf-8", timeout: 5000 }
+        ).trim();
+      } catch (grepErr) {
+        // grep exits 1 (non-error) when no matches are found.
+        if (grepErr.status !== 1) throw grepErr;
+      }
       const files = raw ? raw.split("\n").filter(Boolean) : [];
       result = { files, count: files.length };
 
@@ -2366,12 +2508,7 @@ req.on("end", async () => {
       if (!_isSafeCommand(input.command)) {
         throw new Error(`Command '${input.command.split(" ")[0]}' is not in the allowed list.`);
       }
-      const { execSync } = require("child_process");
-      const output = execSync(input.command, {
-        cwd: input.cwd || process.env.HOME,
-        encoding: "utf-8",
-        timeout: 15000,
-      });
+      const output = _runAllowedCommand(input.command, input.cwd);
       result = { output: output.slice(0, 10000) };
 
     } else {

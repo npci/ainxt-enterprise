@@ -926,26 +926,38 @@ def _enrich_requirements_from_messages(requirements: dict, messages: list[dict])
 # strip these when synthesising the workflow name so the title focuses on
 # the SUBJECT ("HR Policy Q&A") rather than the ask ("Create a workflow for
 # HR Policy Q&A").
+#
+# ReDoS note (CodeQL py/polynomial-redos): this pattern is written for input whose
+# whitespace has been collapsed to single spaces (see `_collapse_ws`), so every gap is a
+# single `\s` / `\s?` token. The previous `\s*`/`\s+` runs sat next to optional groups,
+# letting one whitespace run be split between adjacent quantifiers in many ways
+# (polynomial backtracking on a failing match).
 _PROMPT_PREAMBLE_RE = re.compile(
-    r"^\s*(?:please\s+)?"
-    r"(?:can\s+you\s+)?"
+    r"^\s?(?:please\s)?"
+    r"(?:can\syou\s)?"
     r"(?:"
-    r"(?:i\s+(?:want|need|would\s+like|'d\s+like)\s+(?:to\s+)?"
-    r"(?:create|build|make|design|generate|set\s+up|setup|"
-    r"put\s+together|assemble)?\s*)"
+    r"(?:i\s(?:want|need|would\slike|'d\slike)\s(?:to\s)?"
+    r"(?:(?:create|build|make|design|generate|set\sup|setup|"
+    r"put\stogether|assemble)\s?)?)"
     r"|"
-    r"(?:(?:create|build|make|design|generate|set\s+up|setup|"
-    r"put\s+together|assemble)\s+)"
+    r"(?:(?:create|build|make|design|generate|set\sup|setup|"
+    r"put\stogether|assemble)\s)"
     r")"
-    r"(?:a|an|the)?\s*"
-    r"(?:new\s+)?"
-    r"(?:multi[-\s]?agent\s+)?"
-    r"(?:agent\s+)?"
+    r"(?:(?:a|an|the)\s)?"
+    r"(?:new\s)?"
+    r"(?:multi[-\s]?agent\s)?"
+    r"(?:agent\s)?"
     r"(?:workflow|pipeline|process|flow|automation)"
-    r"(?:\s+(?:for|to|that\s+(?:will|can|does|reviews|routes|handles)"
-    r"|which|about|around|which\s+will|to\s+handle))?\s*",
+    r"(?:\s(?:for|to|that\s(?:will|can|does|reviews|routes|handles)"
+    r"|which|about|around|which\swill|to\shandle))?\s?",
     re.IGNORECASE,
 )
+
+
+def _collapse_ws(text: str) -> str:
+    """Collapse every whitespace run to a single space (input normalisation for
+    `_PROMPT_PREAMBLE_RE`)."""
+    return " ".join(str(text or "").split())
 
 # Trailing wrapper words we strip from a synthesised workflow name — these
 # describe the entity type ("workflow", "agent", "pipeline") rather than the
@@ -974,7 +986,11 @@ def _looks_like_raw_prompt(name: str) -> bool:
     field (e.g. ``Create A Workflow For Hr Policy Question And Answer
     Agent``). We treat these as unusable and re-synthesise them.
     """
-    lower = name.lower()
+    # Cap length before the (deliberately complex, alternation-heavy)
+    # `_PROMPT_PREAMBLE_RE` is applied — a long, adversarial `name` could
+    # otherwise make a failing match expensive (CodeQL py/polynomial-redos).
+    # A real workflow title is always short, so this never affects one.
+    lower = _collapse_ws(name.lower())[:256]
     if len(lower.split()) >= 8:
         return True  # 8+ words is almost never a good workflow title
     if _PROMPT_PREAMBLE_RE.match(lower):
@@ -998,13 +1014,16 @@ def _synthesise_workflow_name(requirements: dict, user_text: str) -> str:
 
     Result is always title-cased and capped at ~60 chars.
     """
-    first_sentence = (user_text or "").split(".")[0].strip()
+    # Cap length before `_PROMPT_PREAMBLE_RE` runs — see `_looks_like_raw_prompt`
+    # for why (CodeQL py/polynomial-redos); a title's source sentence is
+    # always short in practice.
+    first_sentence = _collapse_ws((user_text or "").split(".")[0])[:256]
     # Strip the "create a workflow for …" preamble so we keep the subject only.
     subject = _PROMPT_PREAMBLE_RE.sub("", first_sentence, count=1).strip(" ,.")
     subject = subject.strip()
 
     if not subject:
-        purpose = str(requirements.get("purpose") or "").strip()
+        purpose = _collapse_ws(requirements.get("purpose"))[:256]
         subject = _PROMPT_PREAMBLE_RE.sub("", purpose, count=1).strip(" ,.")
 
     if not subject:

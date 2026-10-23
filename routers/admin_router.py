@@ -11,6 +11,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File
 from auth.rbac import require_admin_flag
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from core.file_validator import validate_upload
 from core.rate_limiter import enforce_rate_limit_with_behaviour, SENSITIVE_ADMIN
 
@@ -144,9 +145,10 @@ async def sync_org_tree(
                 db.add(ot)
                 inserted += 1
             except Exception as e:
-                msg = f"row {i+2}: {e}"
-                logger.warning(f"org_tree row skip: {msg} — row: {row}")
-                errors.append(msg)
+                # The detail goes to the server log only; the `errors` list is returned to the
+                # caller, so it carries a constant description (py/stack-trace-exposure).
+                logger.warning(f"org_tree row skip: row {i+2}: {e} - row: {row}")
+                errors.append(f"row {i+2}: could not be processed")
 
         db.flush()
 
@@ -178,7 +180,7 @@ async def sync_org_tree(
     except Exception as e:
         db.rollback()
         logger.error(f"org_tree sync failed: {e}")
-        raise HTTPException(500, f"Sync failed: {e}")
+        raise HTTPException(500, safe_error_detail(e, context="org_tree sync failed"))
     finally:
         db.close()
 
@@ -223,7 +225,7 @@ def list_local_models(_caller=Depends(require_admin_flag)):
             },
         }
     except Exception as e:
-        return {"error": str(e), "local_llm_base_url": "(not configured)"}
+        return {"error": safe_error_detail(e), "local_llm_base_url": "(not configured)"}
 
 
 @admin_router.get("/circuit-breakers")
@@ -325,7 +327,7 @@ def patch_compliance_config(body: _ConfigPatch, _caller=Depends(require_admin_fl
         logger.info(f"Compliance config updated by admin")
         return {"updated": True, "config": new_cfg}
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, safe_error_detail(e))
 
 
 @admin_router.post("/compliance/config/reload")

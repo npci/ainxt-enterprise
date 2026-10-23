@@ -32,8 +32,17 @@ GREETING_PATTERN = re.compile(
     re.IGNORECASE
 )
 
+# Detects CamelCase-ish identifiers: an uppercase letter, then a run of
+# uppercase/digit/underscore (NOT lowercase — kept disjoint from the next
+# group on purpose), then a lowercase letter, then anything. The original
+# `[A-Z][a-zA-Z0-9_]*[a-z][a-zA-Z0-9_]*` had two adjacent `*` groups whose
+# character classes both include lowercase letters, so a failing match is
+# ambiguous about where the split between them is — a classic polynomial
+# ReDoS shape (CodeQL py/polynomial-redos). Excluding lowercase from the
+# first group makes the split point deterministic while still matching the
+# same identifiers (e.g. "MyClass", "HTTPServer").
 CLASS_PATTERN = re.compile(
-    r"\b[A-Z][a-zA-Z0-9_]*[a-z][a-zA-Z0-9_]*\b"
+    r"\b[A-Z][A-Z0-9_]*[a-z][a-zA-Z0-9_]*\b"
 )
 
 CODE_PATTERN = re.compile(

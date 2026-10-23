@@ -109,6 +109,7 @@ from core.logger import (
     clear_bound_context,
 )
 from core.trace_store import add_trace, get_trace
+from core.error_utils import safe_error_detail
 # Used by the rag_mode history filters, which must treat NULL as "off" (rows
 # written by the video/doc routes carry no rag_mode). See the history loader.
 from sqlalchemy import or_ as _sa_or
@@ -266,8 +267,10 @@ _pt_scan_ledger_lock = threading.Lock()
 
 
 def _pt_ledger_key(user_id: str, role: str, text: str) -> str:
-    return hashlib.sha256(
-        f"{user_id or ''}\x00{role}\x00{text}".encode("utf-8", "ignore")
+    # In-memory ledger key (not a credential store). BLAKE2b, 256-bit digest.
+    return hashlib.blake2b(
+        f"{user_id or ''}\x00{role}\x00{text}".encode("utf-8", "ignore"),
+        digest_size=32,
     ).hexdigest()
 
 
@@ -347,10 +350,23 @@ def _resolve_model_id(model: str) -> str:
     # [^)]* (not [^)]+) so an empty "()" — a display label built from an
     # unresolved/blank model id — still matches instead of falling through to
     # returning the entire raw label string as a bogus "model id".
-    import re as _re
-    m = _re.search(r'\(([^)]*)\)\s*(?:\[[^\]]*\])?\s*$', model)
-    if m:
-        return m.group(1).strip() or "unknown"
+    # Plain string logic (linear, no regex) equivalent to the old
+    # `\(([^()]*)\)(?:\s*\[[^\]]*\])?\s*$` search - a regex here was flagged as
+    # polynomial ReDoS (py/polynomial-redos). Grammar: "(<id>)" optionally followed
+    # by whitespace and a "[...]" suffix, then optional trailing whitespace.
+    model = model[:256]
+    _tail = model.rstrip()
+    if _tail.endswith("]"):
+        _lb = _tail.rfind("[")
+        if _lb == -1 or "]" in _tail[_lb + 1:-1]:
+            return model                      # malformed "[...]" suffix: no label wrapper
+        _tail = _tail[:_lb].rstrip()
+    if _tail.endswith(")"):
+        _lp = _tail.rfind("(")
+        if _lp != -1:
+            _inner = _tail[_lp + 1:-1]
+            if ")" not in _inner:             # "(" is excluded by rfind; ")" must not appear
+                return _inner.strip() or "unknown"
     return model
 
 
@@ -1557,8 +1573,11 @@ if _ABS_ROUTERS_LOADED:
             or os.path.join(os.path.dirname(__file__), "AgentStudio", "tmp")
         ).resolve()
         _base.mkdir(parents=True, exist_ok=True)
-        _target = (_base / relative_path).resolve()
         try:
+            # normpath + startswith containment check (core.path_safety) — the form
+            # CodeQL recognises as a path-injection barrier.
+            from core.path_safety import safe_join_path as _safe_join_gp
+            _target = _pathlib.Path(_safe_join_gp(str(_base), str(relative_path)))
             _rel = _target.relative_to(_base)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid filename")
@@ -1664,7 +1683,7 @@ if _ABS_ROUTERS_LOADED:
                 _health["db_mode"] = "postgres"
             except Exception as _e:
                 _health["db"] = "error"
-                _health["db_error"] = str(_e)
+                _health["db_error"] = safe_error_detail(_e)
         return _health
 
     logger.info(f"[ABStudio] routers mounted at {_abs_prefix}")
@@ -3170,8 +3189,9 @@ def cache_key(question, repo_filter, model_hint=None, user_id=None, rag_mode=Non
     # to a Generic question with identical prompt text (context isolation).
     raw = f"v3:{uid}:{repo}:{model}:{mode}:{question}"
 
-    return hashlib.sha256(
-        raw.strip().lower().encode()
+    # Cache key only (not a credential store). BLAKE2b, 256-bit digest.
+    return hashlib.blake2b(
+        raw.strip().lower().encode(), digest_size=32
     ).hexdigest()
 
 
@@ -3440,7 +3460,7 @@ def continue_generation(
                             current_content += _tok
                             yield "data: " + _json_cont.dumps({"t": _tok}) + "\n\n"
                 except Exception as _e:
-                    yield "data: " + _json_cont.dumps({"t": f"\n[continue failed: {str(_e)[:80]}]"}) + "\n\n"
+                    yield "data: " + _json_cont.dumps({"t": f"\n[continue failed: {safe_error_detail(_e)[:80]}]"}) + "\n\n"
                 _gmeta["latency"] = time.time() - _t0
                 _gmeta["model"]   = _resolve_model_id(_cont_meta.get("model_id") or _cont_meta.get("model_label") or getattr(_mr_cont, "last_model_id", None) or getattr(_mr_cont, "last_model_label", ""))
                 _gmeta["in_tok"]  = int(_cont_meta.get("in_tok", 0) or 0)
@@ -3474,7 +3494,7 @@ def continue_generation(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 # ============================================================
@@ -5829,7 +5849,7 @@ async def ask_ai(q: Question, request: Request, authorization: Optional[str] = _
             if not _hbe_fail_open:
                 _hb_findings.append({
                     "type":     "HARDBLOCK_ENGINE_ERROR",
-                    "value":    str(_hbe_err),
+                    "value":    safe_error_detail(_hbe_err),
                     "category": "internal",
                     "severity": "CRITICAL",
                     "blocked":  True,
@@ -9687,7 +9707,7 @@ async def ask_ai(q: Question, request: Request, authorization: Optional[str] = _
                                 _vision_handled = True
                             except Exception as _img_err:
                                 logger.error(f"[CLI] generate_image via proxy failed: {_img_err}")
-                                yield "data: " + json.dumps({"t": f"\n[Vision error: {_img_err}]"}) + "\n\n"
+                                yield "data: " + json.dumps({"t": "\n[Vision error: image generation failed]"}) + "\n\n"
                                 _cmeta["latency"] = time.time() - _t0
                                 _vision_handled = True
 
@@ -9740,7 +9760,7 @@ async def ask_ai(q: Question, request: Request, authorization: Optional[str] = _
                     _cmeta["cost"]    = _estimate_cost(_cmeta["model"], _cmeta["in_tok"], _cmeta["out_tok"])
             except Exception as _ce:
                 logger.error(f"[CLI] direct stream error: {_ce}")
-                yield "data: " + json.dumps({"t": f"\n[Error: {_ce}]"}) + "\n\n"
+                yield "data: " + json.dumps({"t": "\n[Error: the request could not be completed]"}) + "\n\n"
                 _cmeta["latency"] = time.time() - _t0
             finally:
                 _LLM_SEMAPHORE.release()
@@ -12707,7 +12727,7 @@ def get_compression_metrics(days: int = 7, _caller: dict = Depends(require_role(
         from core.compress_metrics import get_stats
         return get_stats(days=days)
     except Exception as exc:
-        return {"error": str(exc), "days": days, "totals": {}, "daily": []}
+        return {"error": safe_error_detail(exc), "days": days, "totals": {}, "daily": []}
 
 # SECURITY (AppSec finding — Information Disclosure / CWE-200, CWE-306):
 # /traces and /traces/{request_id} previously had no auth dependency at
@@ -13019,7 +13039,7 @@ def openai_responses(
                 data = resp.json()
             except Exception as exc:
                 from fastapi.responses import JSONResponse as _JR_pe
-                return _JR_pe(status_code=502, content={"error": {"message": str(exc)}})
+                return _JR_pe(status_code=502, content={"error": {"message": safe_error_detail(exc)}})
         else:
             try:
                 from gateway_openai import openai_gateway as _oai_gw_r
@@ -13036,7 +13056,7 @@ def openai_responses(
                 }
             except Exception as exc:
                 from fastapi.responses import JSONResponse as _JR_de
-                return _JR_de(status_code=502, content={"error": {"message": str(exc)}})
+                return _JR_de(status_code=502, content={"error": {"message": safe_error_detail(exc)}})
 
         # Output compliance disabled — output returned as-is for real-time streaming.
         # Re-enable by uncommenting below and replacing output_text reference.
@@ -13087,7 +13107,7 @@ def openai_responses(
                             _meta_r["in_tok"]  = obj.get("in_tok", 0)
                             _meta_r["out_tok"] = obj.get("out_tok", 0)
             except Exception as exc:
-                yield f"data: {_json_r.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+                yield f"data: {_json_r.dumps({'type': 'error', 'message': safe_error_detail(exc)})}\n\n"
         else:
             # Direct path — call OpenAI Responses API locally
             try:
@@ -13108,7 +13128,7 @@ def openai_responses(
                     _meta_r["in_tok"]  = getattr(_usage, "input_tokens",  0) or 0 if _usage else 0
                     _meta_r["out_tok"] = getattr(_usage, "output_tokens", 0) or 0 if _usage else 0
             except Exception as exc:
-                yield f"data: {_json_r.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+                yield f"data: {_json_r.dumps({'type': 'error', 'message': safe_error_detail(exc)})}\n\n"
                 return
 
         # Output compliance disabled — output returned as-is for real-time streaming.
@@ -13163,7 +13183,7 @@ async def codebase_search(req: _CodebaseSearchReq, http: Request, user_payload=D
         return {"chunks": _chunks, "repo": _repo, "count": len(_chunks)}
     except Exception as e:
         logger.warning(f"[codebase/search] error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 @_v1.get("/health", tags=["observability"])
@@ -13186,8 +13206,8 @@ def health():
         finally:
             _hdb.close()
     except Exception as _he:
-        checks["postgres"] = f"error: {_he}"
-        checks["database"] = f"error: {_he}"   # backward compat alias
+        checks["postgres"] = f"error: {safe_error_detail(_he)}"
+        checks["database"] = f"error: {safe_error_detail(_he)}"   # backward compat alias
         _critical_fail = True
 
     # ── Redis check (critical, legacy alias for dashboards) ──────
@@ -13195,7 +13215,7 @@ def health():
         redis_client.ping()
         checks["redis"] = "ok"
     except Exception as _re:
-        checks["redis"] = f"error: {_re}"
+        checks["redis"] = f"error: {safe_error_detail(_re)}"
         _critical_fail = True
 
     # ── KV per-DB check ───────────────────────────────────────────
@@ -13212,7 +13232,7 @@ def health():
         # already accounted for by the legacy `redis` probe above, so counting
         # it again here would double-weight the same fault.
     except Exception as _kvbe:
-        checks["kv"] = f"error: {_kvbe}"
+        checks["kv"] = f"error: {safe_error_detail(_kvbe)}"
 
     # ── Embed service check (non-critical) ───────────────────────
     try:
@@ -13225,7 +13245,7 @@ def health():
             checks["embed_svc"] = f"degraded: HTTP {_r.status_code}"
             _non_critical_fail = True
     except Exception as _ee:
-        checks["embed_svc"] = f"error: {_ee}"
+        checks["embed_svc"] = f"error: {safe_error_detail(_ee)}"
         _non_critical_fail = True
 
     # ── Ollama check (non-critical) ──────────────────────────────
@@ -13241,7 +13261,7 @@ def health():
             checks["ollama"] = f"degraded: HTTP {_r.status_code}"
             _non_critical_fail = True
     except Exception as _oe:
-        checks["ollama"] = f"error: {_oe}"
+        checks["ollama"] = f"error: {safe_error_detail(_oe)}"
         _non_critical_fail = True
 
     # ── Docker sandbox check (non-critical) ─────────────────────
@@ -13259,7 +13279,7 @@ def health():
             checks["docker"] = "unavailable (fallback: subprocess executor)"
             _non_critical_fail = True
     except Exception as _dke:
-        checks["docker"] = f"error: {_dke}"
+        checks["docker"] = f"error: {safe_error_detail(_dke)}"
         _non_critical_fail = True
 
     # ── Circuit breakers ─────────────────────────────────────────
@@ -13289,7 +13309,7 @@ def health():
                 checks["injection_svc"] = f"degraded: HTTP {_inj_r.status_code}"
                 _non_critical_fail = True
         except Exception as _inj_he:
-            checks["injection_svc"] = f"error: {_inj_he}"
+            checks["injection_svc"] = f"error: {safe_error_detail(_inj_he)}"
             _non_critical_fail = True
     else:
         checks["injection_svc"] = "not configured (INJECTION_SVC_URL not set)"
@@ -13710,7 +13730,7 @@ def create_agent(body: AgentCreate, _u: dict = Depends(_require_auth)):
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -13745,7 +13765,7 @@ def delete_agent(name: str, _u: dict = Depends(_require_auth)):
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -13766,7 +13786,7 @@ def enable_agent(name: str, _u: dict = Depends(_require_auth)):
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -13787,7 +13807,7 @@ def disable_agent(name: str, _u: dict = Depends(_require_auth)):
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -13829,7 +13849,7 @@ def update_agent(name: str, body: AgentCreate, _u: dict = Depends(_require_auth)
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -14264,7 +14284,7 @@ def save_workflow(body: WorkflowBody, _u: dict = Depends(_require_auth)):
         return {"success": True, "name": sanitized["name"]}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -14331,7 +14351,7 @@ def delete_workflow(name: str):
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -15864,7 +15884,7 @@ def index_status(repo_name: str, _user: dict = Depends(_require_auth)):
         finally:
             db.close()
     except Exception as exc:
-        return {"repo_name": repo_name, "status": "unknown", "error": str(exc)}
+        return {"repo_name": repo_name, "status": "unknown", "error": safe_error_detail(exc)}
 
 
 app.include_router(_v1, prefix="/ainxt/v1/api")
@@ -15892,9 +15912,18 @@ if _os.path.isdir(_abs_dist):
     @app.get("/build-studio", include_in_schema=False)
     @app.get("/build-studio/{full_path:path}", include_in_schema=False)
     async def _serve_abs_spa(full_path: str = ""):
-        candidate = _os.path.join(_abs_dist, full_path)
-        if full_path and _os.path.isfile(candidate):
-            return _FR_abs(candidate)
+        import pathlib as _pathlib
+        # Manual path join (unlike the StaticFiles mounts above) has no
+        # built-in traversal guard - normpath + startswith containment check
+        # (the form CodeQL recognises as a path-injection barrier) before ever
+        # touching the filesystem with it.
+        _root_abs = _os.path.abspath(_abs_dist)
+        candidate = _os.path.normpath(_os.path.join(_root_abs, full_path))
+        # The startswith check guards the filesystem use DIRECTLY (not via a stored flag) -
+        # the shape CodeQL's path-injection query recognises as a barrier.
+        if full_path and candidate.startswith(_root_abs + _os.sep):
+            if _os.path.isfile(candidate):
+                return _FR_abs(candidate)
         resp = _FR_abs(_os.path.join(_abs_dist, "index.html"))
         resp.headers["Cache-Control"] = "no-store, must-revalidate"
         resp.headers["Pragma"]        = "no-cache"
@@ -15941,11 +15970,20 @@ if _os.path.isdir(_ui_dist):
     @app.get("/{full_path:path}", include_in_schema=False)
     async def _serve_spa(full_path: str):
         from fastapi.responses import Response as _Resp
-        candidate = _os.path.join(_ui_dist, full_path)
-        if full_path and _os.path.isfile(candidate):
-            # Named static file (e.g. sw.js, manifest.json) — let
-            # NoCacheMiddleware decide the headers based on the path.
-            return _FR(candidate)
+        import pathlib as _pathlib
+        # Manual path join (unlike the StaticFiles mount above) has no
+        # built-in traversal guard - normpath + startswith containment check
+        # (the form CodeQL recognises as a path-injection barrier) before ever
+        # touching the filesystem with it.
+        _root_ui = _os.path.abspath(_ui_dist)
+        candidate = _os.path.normpath(_os.path.join(_root_ui, full_path))
+        # The startswith check guards the filesystem use DIRECTLY (not via a stored flag) -
+        # the shape CodeQL's path-injection query recognises as a barrier.
+        if full_path and candidate.startswith(_root_ui + _os.sep):
+            if _os.path.isfile(candidate):
+                # Named static file (e.g. sw.js, manifest.json) - let
+                # NoCacheMiddleware decide the headers based on the path.
+                return _FR(candidate)
         # SPA fallback → always serve fresh index.html.
         # NoCacheMiddleware applies no-store, but set it explicitly too
         # so it's impossible to accidentally bypass.

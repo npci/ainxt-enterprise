@@ -1203,9 +1203,13 @@ def doc_preview_info(file_id: str, user=Depends(_require_auth)):
     doc_dir = os.path.dirname(rec.file_path)
     pages = 0
     i = 1
-    while os.path.isfile(os.path.join(doc_dir, f"{file_id}.page-{i}.jpg")):
-        pages = i
-        i += 1
+    from core.path_safety import safe_join_path
+    try:
+        while os.path.isfile(safe_join_path(doc_dir, f"{file_id}.page-{i}.jpg")):
+            pages = i
+            i += 1
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid file_id")
     return {"file_id": file_id, "pages": pages}
 
 
@@ -1236,7 +1240,11 @@ def doc_preview_page(file_id: str, page: int, user=Depends(_require_auth)):
         db.close()
 
     doc_dir = os.path.dirname(rec.file_path)
-    page_path = os.path.join(doc_dir, f"{file_id}.page-{page}.jpg")
+    from core.path_safety import safe_join_path
+    try:
+        page_path = safe_join_path(doc_dir, f"{file_id}.page-{page}.jpg")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid file_id")
     if not os.path.isfile(page_path):
         raise HTTPException(status_code=404, detail=f"Preview page {page} not found")
     return _FR(page_path, media_type="image/jpeg")

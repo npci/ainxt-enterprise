@@ -1033,7 +1033,8 @@ def run_tool_use_via_proxy(
             result = resp.json()
         except Exception as e:
             logger.error(f"{request_id} → proxy /llm/chat round {round_num} failed: {e}")
-            return f"[ERROR generating response: {e}]"
+            from core.error_utils import safe_error_detail
+            return f"[ERROR generating response: {safe_error_detail(e)}]"
 
         stop_reason     = result.get("stop_reason", "end_turn")
         tool_calls      = result.get("tool_calls", [])

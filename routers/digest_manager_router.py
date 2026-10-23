@@ -24,7 +24,18 @@ from pydantic import BaseModel, Field
 
 from auth.rbac import require_admin_flag
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from core.rate_limiter import enforce_rate_limit_with_behaviour, SENSITIVE_ADMIN
+
+# Known, safe error codes raised by manager_statement_service — mapped to
+# user-facing text here (rather than flowing the raw exception message to
+# the client) so error handling doesn't depend on internal exception text.
+_MANAGER_ERROR_MESSAGES = {
+    "manager_not_found": "Manager not found.",
+    "manager_above_cutoff": "Manager is above the reporting cutoff level.",
+    "manager_is_hod": "This user is a Head of Department, not a reporting manager.",
+    "manager_has_no_reports": "Manager has no direct reports.",
+}
 from services.manager_statement_service import (
     generate_and_send_manager,
     generate_and_send_manager_bulk,
@@ -37,7 +48,9 @@ digest_manager_router = APIRouter(tags=["digest-manager"])
 # ── Helpers ─────────────────────────────────────────────────────────────
 # Mirror routers/digest_hod_router.py — same light-touch email validation
 # used by routers/monthly_statement_router.py.
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# Domain labels exclude '.', so the split between labels is unique (no ambiguous
+# `[^@\s]+\.[^@\s]+` overlap -> no polynomial backtracking; CodeQL py/polynomial-redos).
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
 
 
 def _parse_to_override(to: Optional[str]) -> Optional[str]:
@@ -49,6 +62,13 @@ def _parse_to_override(to: Optional[str]) -> Optional[str]:
     cleaned = to.strip()
     if not cleaned:
         return None
+    # Cap length BEFORE the regex: `_EMAIL_RE`'s two `[^@\s]+` groups are
+    # separated by a literal `.` that the character class itself can also
+    # match, which makes failing matches potentially polynomial in input
+    # length (CodeQL py/polynomial-redos). 254 is the RFC 5321 max email
+    # length, so this never rejects a legitimate address.
+    if len(cleaned) > 254:
+        raise HTTPException(400, "?to= must be a valid email address")
     if not _EMAIL_RE.match(cleaned):
         raise HTTPException(400, "?to= must be a valid email address")
     return cleaned
@@ -118,7 +138,7 @@ def admin_send_manager_one(
         # _resolve_manager raises ValueError for unknown email, below the
         # AD-level cutoff, HODs, and managers without reports. All map to
         # 404 — the same surface the HOD router uses for invalid scopes.
-        raise HTTPException(404, str(exc))
+        raise HTTPException(404, _MANAGER_ERROR_MESSAGES.get(str(exc), safe_error_detail(exc)))
     return result
 
 

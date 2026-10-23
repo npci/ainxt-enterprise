@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 
 from auth.rbac import require_admin_flag
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from core.rate_limiter import enforce_rate_limit_with_behaviour, SENSITIVE_ADMIN
 from services.hod_statement_service import (
     generate_and_send_hod,
@@ -36,7 +37,9 @@ digest_hod_router = APIRouter(tags=["digest-hod"])
 # ── Helpers ─────────────────────────────────────────────────────────────
 # Reuse the same lightweight email regex used by routers/monthly_statement_router.py
 # (`_EMAIL_RE`). Kept local to avoid a cross-router import.
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# Domain labels exclude '.', so the split between labels is unique (no ambiguous
+# `[^@\s]+\.[^@\s]+` overlap -> no polynomial backtracking; CodeQL py/polynomial-redos).
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
 
 
 def _parse_to_override(to: Optional[str]) -> Optional[str]:
@@ -48,6 +51,13 @@ def _parse_to_override(to: Optional[str]) -> Optional[str]:
     cleaned = to.strip()
     if not cleaned:
         return None
+    # Cap length BEFORE the regex: `_EMAIL_RE`'s two `[^@\s]+` groups are
+    # separated by a literal `.` that the character class itself can also
+    # match, which makes failing matches potentially polynomial in input
+    # length (CodeQL py/polynomial-redos). 254 is the RFC 5321 max email
+    # length, so this never rejects a legitimate address.
+    if len(cleaned) > 254:
+        raise HTTPException(400, "?to= must be a valid email address")
     if not _EMAIL_RE.match(cleaned):
         raise HTTPException(400, "?to= must be a valid email address")
     return cleaned
@@ -126,7 +136,7 @@ def admin_send_hod_one(
     except ValueError as exc:
         # ValueError covers: unknown corrected_department_name AND
         # zero-active-user departments — both map to 404 per spec.
-        raise HTTPException(404, str(exc))
+        raise HTTPException(404, safe_error_detail(exc))
     return result
 
 

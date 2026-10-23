@@ -448,7 +448,19 @@ class GeminiGateway:
         # goes out with no key — producing the persistent
         # "video bytes unavailable after download" / 502 failure.
         fetch_url = video_uri
-        if "generativelanguage.googleapis.com" in fetch_url and "key=" not in fetch_url:
+        # `"generativelanguage.googleapis.com" in fetch_url` is a raw
+        # substring check anywhere in the URL (not just the host) — a crafted
+        # `fetch_url` with that text in its path/query (pointing at an
+        # attacker-controlled host) would pass too, leaking the API key to
+        # that host (CodeQL py/incomplete-url-substring-sanitization).
+        # Parse and check the actual host instead.
+        from urllib.parse import urlsplit as _us_check
+        _fetch_host = (_us_check(fetch_url).hostname or "").lower()
+        _is_gemini_host = (
+            _fetch_host == "generativelanguage.googleapis.com"
+            or _fetch_host.endswith(".generativelanguage.googleapis.com")
+        )
+        if _is_gemini_host and "key=" not in fetch_url:
             api_key = getattr(self, "_api_key", "") or os.getenv("GEMINI_API_KEY", "")
             sep = "&" if "?" in fetch_url else "?"
             fetch_url = f"{fetch_url}{sep}key={api_key}"
@@ -623,6 +635,11 @@ class GeminiGateway:
             ctx = ssl.create_default_context(cafile=ca_bundle)
         else:
             ctx = ssl.create_default_context()
+        # Explicitly pin the floor to TLS 1.2 — create_default_context()'s
+        # own default minimum can vary with the OpenSSL build it links
+        # against, so pin it explicitly rather than relying on that default
+        # (CodeQL py/insecure-protocol / CWE-327).
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
 
         req = (
             f"GET {path} HTTP/1.1\r\n"

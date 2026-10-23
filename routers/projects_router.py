@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.logger import logger, set_request_id, set_chat_context, bind_context, set_span_id
+from core.error_utils import safe_error_detail
 from auth.dependencies import get_current_user
 from core.model_registry import (
     OPENAI_CODING_MODEL as _OPENAI_CODING,
@@ -362,7 +363,7 @@ def ask_project(
                         yield "data: " + _json.dumps({"t": _token}) + "\n\n"
             except Exception as _fe:
                 logger.error(f"ProjectAsk: GPT fallback also failed: {_fe}")
-                yield "data: " + _json.dumps({"t": f"\nError: {e}"}) + "\n\n"
+                yield "data: " + _json.dumps({"t": f"\nError: {safe_error_detail(e)}"}) + "\n\n"
         finally:
             latency = round(time.time() - start, 2)
             try:

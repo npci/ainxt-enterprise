@@ -54,7 +54,12 @@ def _sanitization_enabled() -> bool:
 # ── XSS Detection Patterns ──────────────────────────────────────
 XSS_PATTERNS = {
     # HTML/Script injection
-    "SCRIPT_TAG":     re.compile(r"<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>", re.I),
+    # Matches a <script ...> opening tag on its own (not just a fully-closed
+    # <script>...</script> pair) so an unclosed/truncated tag -- a known
+    # bypass technique against "wait for the closing tag" filters -- is
+    # still flagged. HTML_TAG below is a broader catch-all for any tag at
+    # all; this pattern exists for the more specific xss_script message.
+    "SCRIPT_TAG":     re.compile(r"<script\b[^>]*>", re.I),
     "IFRAME_TAG":     re.compile(r"<iframe[^>]*>", re.I),
     "OBJECT_TAG":     re.compile(r"<object[^>]*>", re.I),
     "EMBED_TAG":      re.compile(r"<embed[^>]*>", re.I),

@@ -15,8 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from auth.dependencies import get_current_user
 from core.logger import logger
-
-
+from core.error_utils import safe_error_detail
 router = APIRouter(prefix="/kb", tags=["knowledge_base"])
 
 
@@ -160,7 +159,7 @@ def list_entities(
         }
     except Exception as e:
         logger.warning(f"kb_router.list_entities failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
 
 
 @router.post("/entities/promote")
@@ -195,4 +194,4 @@ def promote_entity_global(
         finally:
             db.close()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))

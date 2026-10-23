@@ -1992,7 +1992,8 @@ def reject_budget_request(request_id: str, acting_hod_email: str,
             cur.close(); conn.close()
     except Exception as e:
         logger.error(f"BudgetStore.reject_budget_request({request_id}): {e}")
-        return {"success": False, "error": str(e)}
+        from core.error_utils import safe_error_detail
+        return {"success": False, "error": safe_error_detail(e)}
 
     return {"success": True, "request_id": request_id, "user_id": str(target_user_id)}
 

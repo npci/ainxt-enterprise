@@ -1661,7 +1661,17 @@ export default function KbChat({
     });
     if (!r.ok) {
       const text = await r.text();
-      throw new Error(`Server error ${r.status}: ${text.replace(/<[^>]+>/g, "").trim().slice(0, 200)}`);
+      // Run the tag-strip twice: a single pass can leave a reconstituted
+      // tag behind when the input contains overlapping/nested angle
+      // brackets (CodeQL js/incomplete-multi-character-sanitization) —
+      // matches the double-pass convention used elsewhere in this repo
+      // (see desktop/src/main.js's _extractHtml/_extractPptx).
+      let stripped = text;
+      for (let prev = null; prev !== stripped; ) {
+        prev = stripped;
+        stripped = stripped.replace(/<[^>]+>/g, "");
+      }
+      throw new Error(`Server error ${r.status}: ${stripped.trim().slice(0, 200)}`);
     }
     const d = await r.json();
     if (!d.job_id) throw new Error(d.detail || "Document generation failed");

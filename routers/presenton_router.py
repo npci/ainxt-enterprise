@@ -37,6 +37,7 @@ _PRESENTON_DATA_DIR = os.path.expanduser(
 )
 from core.job_queue import Q_DOC, enqueue_job
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from core.prompt_sanitizer import sanitize
 from core.security_validation import (
     validate_presenton_outline_request,
@@ -188,7 +189,7 @@ def generate_outline(req: OutlineRequest, _user=Depends(get_current_user)):
         return outline
     except Exception as exc:
         logger.error(f"presenton_router: outline generation failed: {exc}")
-        raise HTTPException(status_code=500, detail=f"Outline generation failed: {exc}")
+        raise HTTPException(status_code=500, detail=safe_error_detail(exc, context="Outline generation failed"))
 
 
 @router.post("/ppt/generate")

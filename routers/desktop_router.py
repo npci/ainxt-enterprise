@@ -27,6 +27,7 @@ from pydantic import BaseModel
 
 from auth.dependencies import get_current_user
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from core.config import POSTGRES_DB as _cfg_postgres_db
 from core.config import POSTGRES_HOST as _cfg_postgres_host
 
@@ -251,7 +252,7 @@ def list_mcp_tools(current_user=Depends(get_current_user)):
         resp.raise_for_status()
         return {"tools": resp.json().get("tools", []), "registered": True, "port": entry["port"]}
     except Exception as e:
-        return {"tools": [], "registered": False, "error": str(e)}
+        return {"tools": [], "registered": False, "error": safe_error_detail(e)}
 
 
 def execute_local_mcp_tool(user_id: str, tool: str, input_params: dict) -> dict:

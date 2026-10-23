@@ -154,7 +154,7 @@
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.0",
     "electron-store": "^8.2.0",
-    "jimp": "^0.22.12",
+    "jimp": "^1.6.1",
     "jszip": "^3.10.1",
     "mammoth": "^1.11.0",
     "playwright": "^1.60.0",
@@ -162,8 +162,11 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
-    "electron": "^41.10.6",
+    "electron": "^42.11.3",
     "electron-builder": "^26.8.1"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "overrides": {
+    "file-type": "^21.3.1"
+  }
 }

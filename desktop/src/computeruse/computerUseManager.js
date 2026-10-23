@@ -195,14 +195,14 @@ async function _imageToB64(nut, img) {
   if (img && img.data && img.width && img.height) {
     // Encode raw screen buffer → PNG via the bundled jimp.
     try {
-      const Jimp = require("jimp");
-      const j = new Jimp({ data: Buffer.from(img.data), width: img.width, height: img.height });
+      const { Jimp, JimpMime } = require("jimp");
+      const j = Jimp.fromBitmap({ data: Buffer.from(img.data), width: img.width, height: img.height });
       // Retina/4K screens exceed the model's tool-result image cap (~2000px) and OCR
       // is far slower at full res. Downscale the long edge to 1400px (well within
       // limits, still legible) BEFORE redaction so the OCR boxes align to what's returned.
       const MAX = 1400;
-      if (Math.max(j.bitmap.width, j.bitmap.height) > MAX) j.scaleToFit(MAX, MAX);
-      const buf = await j.getBufferAsync(Jimp.MIME_PNG);
+      if (Math.max(j.bitmap.width, j.bitmap.height) > MAX) j.scaleToFit({ w: MAX, h: MAX });
+      const buf = await j.getBuffer(JimpMime.png);
       return buf.toString("base64");
     } catch { /* fall through */ }
   }

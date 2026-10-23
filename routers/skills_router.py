@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from auth.dependencies import get_current_user
 from core.security_validation import validate_skill_request
 
@@ -176,7 +177,7 @@ def create_skill(body: SkillCreate, current_user: dict = Depends(get_current_use
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -213,7 +214,7 @@ def update_skill(name: str, body: SkillCreate, current_user: dict = Depends(get_
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -234,7 +235,7 @@ def delete_skill(name: str):
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(e))
     finally:
         db.close()
 
@@ -581,14 +582,14 @@ def generate_skill(body: SkillGenerate, current_user: dict = Depends(get_current
             return {"success": True, "code": code, "saved": True, "skill": _row_to_dict(rec)}
         except Exception as e:
             db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=safe_error_detail(e))
         finally:
             db.close()
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Skill generation failed: {e}")
+        raise HTTPException(status_code=500, detail=safe_error_detail(e, context="Skill generation failed"))
 
 
 @router.post("/skills/{name}/test")
@@ -613,4 +614,4 @@ def test_skill(name: str, body: SkillRun):
         answer = model_router.generate(body.message)
         return {"success": True, "answer": answer, "skill": name}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": safe_error_detail(e)}

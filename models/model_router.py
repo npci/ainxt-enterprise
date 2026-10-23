@@ -1557,7 +1557,10 @@ class ModelRouter:
             return result, False
         except Exception as e:
             logger.warning(f"ModelRouter: registry dispatch failed for {provider_model!r} ({family}) → {e}")
-            return f"Error: {provider_model} call failed ({e})", False
+            # The exception text is logged above; the returned string reaches end users, so it
+            # carries only a constant, type-based description (py/stack-trace-exposure).
+            from core.error_utils import safe_error_detail
+            return f"Error: {provider_model} call failed ({safe_error_detail(e)})", False
 
     def _try_registry_stream(self, prompt: str, provider_model: Optional[str] = None, **kwargs):
         gw, family = self._resolve_registry_gateway(provider_model)
@@ -1570,7 +1573,8 @@ class ModelRouter:
             yield from gw.generate(prompt, model=provider_model, **call_kwargs)
         except Exception as e:
             logger.warning(f"ModelRouter: registry stream dispatch failed for {provider_model!r} ({family}) → {e}")
-            yield f"Error: {provider_model} call failed ({e})"
+            from core.error_utils import safe_error_detail
+            yield f"Error: {provider_model} call failed ({safe_error_detail(e)})"
 
     # --------------------------------------------------------
     # SIGNAL DETECTION
@@ -2900,7 +2904,8 @@ class ModelRouter:
             # explicit and safe.)
             return "".join(t for t in gen if isinstance(t, str) and t)
         except Exception as e:
-            return f"Error collecting response: {e}"
+            from core.error_utils import safe_error_detail
+            return f"Error collecting response: {safe_error_detail(e)}"
 
     # --------------------------------------------------------
     # PUBLIC API

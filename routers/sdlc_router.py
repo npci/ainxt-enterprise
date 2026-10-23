@@ -4267,7 +4267,13 @@ def add_governance_approver(req: GovernanceApproverAddRequest,
     if len(_domain) > 32:
         raise HTTPException(status_code=400, detail="domain too long (max 32 chars)")
     import re as _re_email
-    if not _re_email.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", _email):
+    # Cap length BEFORE the regex: the two `[^@\s]+` groups are separated by
+    # a literal `.` that the character class itself can also match, which
+    # makes a failing match potentially polynomial in input length (CodeQL
+    # py/polynomial-redos). 254 is the RFC 5321 max email length.
+    # Domain labels exclude '.', so the label split is unique (no overlap -> no
+    # polynomial backtracking).
+    if len(_email) > 254 or not _re_email.match(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$", _email):
         raise HTTPException(status_code=400, detail="invalid email format")
     _created_by = current_user.get("email") or current_user.get("sub", "admin")
     from store.sdlc_governance_approvers import add_approver

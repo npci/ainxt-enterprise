@@ -59,6 +59,7 @@ from core.logger import (
     clear_bound_context,
 )
 from core.gemini_protocol import GEMINI_THOUGHT_SIG_KEY
+from core.error_utils import safe_error_detail
 from agents.hardblock_engine import hardblock_engine
 
 router = APIRouter(tags=["messages-compat"])
@@ -659,7 +660,7 @@ async def _claude_lines_via_proxy(
                 continue
             breaker.record_failure(e)
             logger.error(f"[messages-compat/claude] error: {e}", exc_info=True)
-            yield json.dumps({"error": str(e), "error_type": "api_error"})
+            yield json.dumps({"error": safe_error_detail(e), "error_type": "api_error"})
             return
         except Exception as e:
             # Only record as breaker signal when nothing has streamed yet —
@@ -669,7 +670,7 @@ async def _claude_lines_via_proxy(
             if not first_byte_seen:
                 breaker.record_failure(e)
             logger.error(f"[messages-compat/claude] error: {e}", exc_info=True)
-            yield json.dumps({"error": str(e), "error_type": "api_error"})
+            yield json.dumps({"error": safe_error_detail(e), "error_type": "api_error"})
             return
 
 
@@ -766,7 +767,7 @@ async def _claude_lines_direct(
                     _err_type = (_body.get("error") or {}).get("type") or _err_type
             except Exception:
                 pass
-            _put(json.dumps({"error": str(exc), "status_code": _status_code, "error_type": _err_type}))
+            _put(json.dumps({"error": safe_error_detail(exc), "status_code": _status_code, "error_type": _err_type}))
         finally:
             _put(None)  # sentinel
 

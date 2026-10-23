@@ -472,6 +472,7 @@ def direct_stream_cloud_tools(
             "[managed-endpoint-direct] transport failure provider=%s model=%s: %s",
             provider, model, exc,
         )
-        yield f"Error generating response: {exc}"
+        from core.error_utils import safe_error_detail
+        yield f"Error generating response: {safe_error_detail(exc)}"
 
     yield _sentinel()

@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import or_
 
 from auth.dependencies import get_current_user
+from auth.api_key_auth import _keyed_hash_hex
 
 
 router = APIRouter(prefix="/profile/api-keys", tags=["api-keys"])
@@ -98,9 +99,10 @@ class APIKeyCreateResponse(BaseModel):
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _sha256_hex(value: str) -> str:
-    return hashlib.sha256(value.encode()).hexdigest()
+# Key hashing lives in auth.api_key_auth (`_keyed_hash_hex`) so generation
+# here and verification in resolve_api_key always use the same HMAC-SHA256
+# keyed digest (CodeQL py/weak-sensitive-data-hashing — an unkeyed SHA-256
+# over the stored hash table is a bigger problem if the DB alone leaks).
 
 
 def _slugify(text: str, max_len: int = 20) -> str:
@@ -144,7 +146,7 @@ def mint_api_key_for_user(user_id: str, email: str = "", label: Optional[str] = 
         short_uuid = raw_key[len(slug) + 1: len(slug) + 9]
         now = datetime.now(timezone.utc)
         db.add(UserAPIKey(
-            user_id=user_id, key_prefix=f"{slug}-{short_uuid}", key_hash=_sha256_hex(raw_key),
+            user_id=user_id, key_prefix=f"{slug}-{short_uuid}", key_hash=_keyed_hash_hex(raw_key),
             label=(label.strip() if label else None), is_active=True,
             created_at=now,
             expires_at=now + timedelta(days=_KEY_LIFETIME_DAYS),
@@ -288,7 +290,7 @@ def create_api_key(
 
         # Generate raw key:  {slug}-{uuid4}
         raw_key    = f"{slug}-{uuid.uuid4()}"
-        key_hash   = _sha256_hex(raw_key)
+        key_hash   = _keyed_hash_hex(raw_key)
         # Prefix = first token (slug) + first 8 chars of UUID
         short_uuid = raw_key[len(slug) + 1: len(slug) + 9]
         key_prefix = f"{slug}-{short_uuid}"

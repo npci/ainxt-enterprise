@@ -45,6 +45,7 @@ import sys as _sys, os as _os
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 
 from core.logger import logger
+from core.error_utils import safe_error_detail
 # Load .env from this directory (services/llm_proxy/.env) so credentials
 # are available without needing them in the OS environment at launch time.
 try:
@@ -418,7 +419,7 @@ class _BodySizeMiddleware(BaseHTTPMiddleware):
             return response
         except Exception as exc:
             logger.error(f"Middleware caught unhandled error: {exc}")
-            return JSONResponse(status_code=500, content={"detail": str(exc)})
+            return JSONResponse(status_code=500, content={"detail": safe_error_detail(exc)})
 
 
 app.add_middleware(_BodySizeMiddleware)
@@ -642,7 +643,7 @@ def _run_sync_generator(
             f"[PROXY HOP-3] {req_id} {provider} generation failed "
             f"[{type(e).__name__}]: {e}\n{_tb.format_exc()}"
         )
-        _put(json.dumps({"error": str(e)}) + "\n")
+        _put(json.dumps({"error": safe_error_detail(e)}) + "\n")
     finally:
         # For async generators: prefer token data captured inside asyncio.run() context.
         # For sync generators: fall back to gw attributes (set in the same thread).
@@ -805,7 +806,7 @@ async def generate(req: GenerateRequest, request: Request):
             logger.error(
                 f"[{req_id}] {req.provider} generation error [{type(e).__name__}]: {e}"
             )
-            yield json.dumps({"error": str(e)}) + "\n"
+            yield json.dumps({"error": safe_error_detail(e)}) + "\n"
         finally:
             # Token counts are set on gw by usage events inside the async generator
             # and are readable here on the same event loop (ContextVar for Claude,
@@ -1008,7 +1009,7 @@ async def claude_tools_stream(req: ClaudeToolsRequest, request: Request):
             except Exception:
                 pass
             yield json.dumps({
-                "error": str(exc),
+                "error": safe_error_detail(exc),
                 "status_code": _status_code,
                 "error_type": _err_type,
             }) + "\n"
@@ -2069,7 +2070,7 @@ async def chat(req: ChatRequest, request: Request):
             result = await _run_in_pool(loop, _fn, req)
     except Exception as e:
         logger.error(f"[{req_id}] /llm/chat {req.provider} error: {e}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, safe_error_detail(e))
     logger.info(
         f"[{req_id}] CHAT DONE | stop={result['stop_reason']} "
         f"tools={len(result['tool_calls'])} in={result['input_tokens']} out={result['output_tokens']}"
@@ -2564,7 +2565,7 @@ async def veo(req: VeoRequest):
         logger.error(f"[{req_id}] veo exec failure: {exc}", exc_info=True)
         raise HTTPException(
             500,
-            {"error": "veo_generation_failed", "detail": f"{type(exc).__name__}: {exc}"},
+            {"error": "veo_generation_failed", "detail": safe_error_detail(exc)},
         )
 
     if not video_bytes:
@@ -2905,7 +2906,7 @@ async def responses_endpoint(req: ResponsesRequest, request: Request):
             return result
         except Exception as exc:
             logger.error(f"[{req_id}] RESPONSES non-stream error: {exc}")
-            raise HTTPException(500, str(exc))
+            raise HTTPException(500, safe_error_detail(exc))
 
     # Streaming path — thread pool + queue (responses_stream() is sync)
     queue: asyncio.Queue = asyncio.Queue(maxsize=4096)
@@ -2929,7 +2930,7 @@ async def responses_endpoint(req: ResponsesRequest, request: Request):
                 _put(json.dumps(chunk) + "\n")
         except Exception as exc:
             logger.error(f"[{req_id}] RESPONSES stream error: {exc}")
-            _put(json.dumps({"error": str(exc)}) + "\n")
+            _put(json.dumps({"error": safe_error_detail(exc)}) + "\n")
         finally:
             _put(None)
 
@@ -3172,9 +3173,17 @@ async def net_forward(req: NetForwardRequest):
     egress. Returns {status, content_type, text} — the caller reconstructs the
     response (see connectors/net_relay.py)."""
     from urllib.parse import urlparse as _urlparse
-    host = (_urlparse(req.url).hostname or "").lower()
-    if not any(host == h or host.endswith("." + h) for h in _NET_FORWARD_ALLOW):
+    _parsed = _urlparse(req.url)
+    host = (_parsed.hostname or "").lower()
+    # SSRF guard (CWE-918): https only, default port only, EXACT allowlisted host (no suffix
+    # matching), and the outbound URL is rebuilt from the allowlist constant + path/query
+    # rather than reusing the caller-supplied URL string.
+    _allowed_host = next((h for h in _NET_FORWARD_ALLOW if h == host), None)
+    if _parsed.scheme != "https" or _allowed_host is None or _parsed.port not in (None, 443):
         raise HTTPException(403, f"host not allowed for /net/forward: {host!r}")
+    _target_url = f"https://{_allowed_host}{_parsed.path or '/'}"
+    if _parsed.query:
+        _target_url += f"?{_parsed.query}"
 
     try:
         async with _httpx.AsyncClient(timeout=req.timeout or 30.0) as client:
@@ -3185,7 +3194,7 @@ async def net_forward(req: NetForwardRequest):
             if req.content_b64 is not None:
                 import base64 as _b64
                 kwargs["content"] = _b64.b64decode(req.content_b64)
-            resp = await client.request(req.method.upper(), req.url, **kwargs)
+            resp = await client.request(req.method.upper(), _target_url, **kwargs)
 
         logger.info(f"net_forward {req.method.upper()} {host} → HTTP {resp.status_code}")
         return JSONResponse(
@@ -3638,7 +3647,7 @@ async def spend_gcp_bigquery(req: GcpBigQueryRequest, request: Request):
         rows = await _run_in_pool(loop, _run_gcp_spend_query, req.window_start, req.window_end)
     except RuntimeError as e:
         logger.error(f"[spend/gcp/bigquery] config error: {e}")
-        raise HTTPException(503, str(e))
+        raise HTTPException(503, safe_error_detail(e))
     except Exception as e:
         logger.error(f"[spend/gcp/bigquery] query failed: {e}")
         raise HTTPException(502, f"BigQuery query failed: {e}")
@@ -3893,7 +3902,7 @@ async def web_search(req: WebSearchRequest, request: Request):
 
     except RuntimeError as exc:
         logger.error(f"[{req_id}] WEB-SEARCH UNAVAILABLE | provider={provider} error={exc}")
-        raise HTTPException(503, str(exc))
+        raise HTTPException(503, safe_error_detail(exc))
 
     except Exception as exc:
         logger.error(f"[{req_id}] WEB-SEARCH FAILED | provider={provider} tool={req.tool_name} error={exc}")
@@ -3904,7 +3913,7 @@ async def web_search(req: WebSearchRequest, request: Request):
             "in_tok":     0,
             "out_tok":    0,
             "provider":   provider,
-            "error":      str(exc),
+            "error": safe_error_detail(exc),
         }
 
 

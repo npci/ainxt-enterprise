@@ -2420,6 +2420,18 @@
     return null;
   }
 
+  // Escape a value for embedding inside a double-quoted XPath/CSS attribute
+  // selector string. Backslashes MUST be escaped before quotes -- escaping
+  // quotes first (the previous implementation here) leaves a dangling
+  // backslash free to combine with the character that follows (e.g. our own
+  // closing quote), letting a hostile page's attribute/text value break out
+  // of the selector string and inject arbitrary XPath/CSS.
+  function escSelectorValue(value) {
+    return String(value)
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"');
+  }
+
   function buildContextualXPath(el, anchor) {
     const tag = el.tagName.toLowerCase();
     let head;
@@ -2432,14 +2444,14 @@
     }
     const text = (el.textContent || "").trim();
     if (text && text.length <= 50 && ["BUTTON", "A"].includes(el.tagName)) {
-      return `${head}//${tag}[normalize-space()="${text.replace(/"/g, '\\"')}"]`;
+      return `${head}//${tag}[normalize-space()="${escSelectorValue(text)}"]`;
     }
     const nameAttr = el.getAttribute("name");
     if (nameAttr) return `${head}//${tag}[@name='${nameAttr}']`;
     const ph = el.getAttribute("placeholder");
-    if (ph) return `${head}//${tag}[@placeholder="${ph.replace(/"/g, '\\"')}"]`;
+    if (ph) return `${head}//${tag}[@placeholder="${escSelectorValue(ph)}"]`;
     const aria = el.getAttribute("aria-label");
-    if (aria) return `${head}//${tag}[@aria-label="${aria.replace(/"/g, '\\"')}"]`;
+    if (aria) return `${head}//${tag}[@aria-label="${escSelectorValue(aria)}"]`;
     return null;
   }
 
@@ -2488,7 +2500,7 @@
     // 2. Role + accessible name — survives DOM/class renames
     const role = getRole(el);
     const accName = getAccessibleName(el);
-    if (role && accName) push(`role=${role}[name="${accName.replace(/"/g, '\\"')}"]`);
+    if (role && accName) push(`role=${role}[name="${escSelectorValue(accName)}"]`);
 
     const isFormField = ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
     const tag = el.tagName.toLowerCase();
@@ -2507,16 +2519,16 @@
     // 5. text="..." for buttons / links
     const text = (el.textContent || "").trim();
     if (text && text.length <= 50 && ["BUTTON", "A"].includes(el.tagName)) {
-      push(`text="${text.replace(/"/g, '\\"')}"`);
+      push(`text="${escSelectorValue(text)}"`);
     }
 
     // 6. Form-field accessibility anchors
     if (isFormField) {
       const ph = el.getAttribute("placeholder");
-      if (ph) push(`[placeholder="${ph.replace(/"/g, '\\"')}"]`);
+      if (ph) push(`[placeholder="${escSelectorValue(ph)}"]`);
     }
     const aria = el.getAttribute("aria-label");
-    if (aria) push(`[aria-label="${aria.replace(/"/g, '\\"')}"]`);
+    if (aria) push(`[aria-label="${escSelectorValue(aria)}"]`);
 
     // 7. Contextual XPath anchored to nearest stable landmark
     const anchor = getStableAncestor(el);
@@ -2526,7 +2538,7 @@
     }
     // Bare-text XPath for non-form elements (survives DOM moves)
     if (text && text.length <= 60 && !isFormField) {
-      push(`xpath=//${tag}[normalize-space(.)="${text.replace(/"/g, '\\"')}"]`);
+      push(`xpath=//${tag}[normalize-space(.)="${escSelectorValue(text)}"]`);
     }
 
     // 8. CSS path — last resort, structural

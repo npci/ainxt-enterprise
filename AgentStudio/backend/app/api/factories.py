@@ -46,6 +46,7 @@ from skill_factory.pipeline import (
 
 router = APIRouter()
 from core.logger import logger
+from core.error_utils import safe_error_detail
 _registry = AgentRegistry(str(AGENTS_FILE))
 _monitor = MonitoringLogger(str(LOGS_FILE))
 
@@ -1174,7 +1175,7 @@ async def agent_factory_chat(
         except Exception as exc:
             logger.exception('[AGENT] agent_factory_chat error')
             try:
-                yield _sse({"type": "error", "message": str(exc)})
+                yield _sse({"type": "error", "message": safe_error_detail(exc)})
             except Exception:
                 pass
         finally:
@@ -2224,7 +2225,7 @@ async def workflow_factory_chat(
         except Exception as exc:
             logger.exception('[AGENT] workflow_factory_chat error')
             try:
-                yield _sse({"type": "error", "message": str(exc)})
+                yield _sse({"type": "error", "message": safe_error_detail(exc)})
             except Exception:
                 pass
         finally:
@@ -2548,7 +2549,7 @@ async def skill_factory_chat(
 
         except Exception as exc:
             logger.exception('[AGENT] skill_factory_chat error')
-            yield _sse({"type": "error", "message": str(exc)})
+            yield _sse({"type": "error", "message": safe_error_detail(exc)})
         finally:
             _schedule_bg(persist_skill_session(session, current_user.id))
             yield _sse({"type": "done", "session_id": session.session_id})
@@ -2621,7 +2622,7 @@ async def skill_factory_confirm(
             )
         except Exception as exc:
             logger.exception(f"[AGENT] skill_factory_confirm: failed to persist bundled files for {assembled['name']}")
-            bundle_error = str(exc)
+            bundle_error = safe_error_detail(exc)
 
     catalog_cache.invalidate()
     session.stage = "done"
@@ -2807,9 +2808,9 @@ async def agent_runner_chat(
             **({"budget_notice": _budget.notice} if _budget.notice else {}),
         }
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=safe_error_detail(exc))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=safe_error_detail(exc))
     finally:
         clear_log_context()
 
@@ -3014,11 +3015,11 @@ async def agent_runner_chat_stream(
         try:
             result = run_task.result()
         except ValueError as exc:
-            yield _sse({"event": "error", "data": {"detail": str(exc), "code": "not_found"}})
+            yield _sse({"event": "error", "data": {"detail": safe_error_detail(exc), "code": "not_found"}})
             return
         except Exception as exc:  # noqa: BLE001
             logger.exception('[AGENT] agent_runner_chat_stream: runner raised')
-            yield _sse({"event": "error", "data": {"detail": str(exc), "code": "runner_failure"}})
+            yield _sse({"event": "error", "data": {"detail": safe_error_detail(exc), "code": "runner_failure"}})
             return
 
         response = result["response"]
@@ -3094,4 +3095,4 @@ async def agent_runner_chat_direct(
         )
         return {"response": response, "agent_name": request.agent_name}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=safe_error_detail(exc))

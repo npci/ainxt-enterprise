@@ -62,7 +62,7 @@ from services.embed_svc.config import (
     PARSE_SVC_ENABLED,
 )
 from core.logger import logger
-
+from core.error_utils import safe_error_detail
 # ── Singletons (created during lifespan) ──────────────────────
 _cache:   EmbedCache      | None = None
 _ollama:  OllamaEmbedder  | None = None
@@ -328,7 +328,7 @@ async def embed(req: EmbedRequest):
             f"embed_svc [✗]: {type(exc).__name__}: {exc} | "
             f"texts={len(req.texts)} max_chars={max(lens)} latency={latency_ms:.0f}ms"
         )
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=safe_error_detail(exc))
 
     latency_ms = (time.perf_counter() - t0) * 1000
     logger.info(
@@ -435,7 +435,7 @@ async def parse_doc(req: ParseRequest):
             f"parse_svc [✗]: '{req.filename}' ({ft}) page conversion failed "
             f"latency={latency_ms:.0f}ms detail='{_pce}'"
         )
-        raise HTTPException(status_code=422, detail=str(_pce))
+        raise HTTPException(status_code=422, detail=safe_error_detail(_pce))
 
     latency_ms = (time.perf_counter() - t0) * 1000
     status_icon = "✓" if content else "∅"
@@ -461,7 +461,7 @@ async def health():
                 _inst["ok"]   = _r.status_code == 200
                 _inst["body"] = _r.text[:120]
             except Exception as _e:
-                _inst["error"] = str(_e)[:120]
+                _inst["error"] = safe_error_detail(_e)[:120]
             instance_status.append(_inst)
 
     ollama_ok   = any(i["ok"] for i in instance_status)
@@ -481,7 +481,7 @@ async def health():
     except asyncio.TimeoutError:
         ollama_embed_err = "timeout 10s — Ollama not responding"
     except Exception as e:
-        ollama_embed_err = f"{type(e).__name__}: {e}"
+        ollama_embed_err = safe_error_detail(e)
 
     # ── Nomic (custom endpoint) embed probe ─────────────────────────
     nomic_svc_ok  = False
@@ -497,7 +497,7 @@ async def health():
         except asyncio.TimeoutError:
             nomic_svc_err = f"timeout 10s — {NOMIC_EMBED_URL} not responding"
         except Exception as e:
-            nomic_svc_err = f"{type(e).__name__}: {e}"
+            nomic_svc_err = safe_error_detail(e)
     else:
         nomic_svc_err = "disabled (NOMIC_EMBED_URL not set)"
 

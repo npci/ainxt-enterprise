@@ -40,6 +40,7 @@ from pydantic import BaseModel
 
 from auth.dependencies import get_current_user
 from core.logger import logger
+from core.error_utils import safe_error_detail
 from agents.compliance_engine import compliance_engine
 
 router = APIRouter(prefix="/compliance", tags=["compliance"])
@@ -97,7 +98,7 @@ async def scan_image(body: ScanImageRequest, current_user: dict = Depends(get_cu
         return {"ok": True, "image_b64": base64.b64encode(out.getvalue()).decode(), "findings": findings}
     except Exception as exc:
         logger.warning(f"scan-image failed → {exc}")
-        return {"ok": False, "reason": str(exc)}
+        return {"ok": False, "reason": safe_error_detail(exc)}
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────

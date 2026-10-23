@@ -59,6 +59,7 @@ from app.core.parser_errors import is_parser_error, PARSER_ERROR_PREFIXES
 
 
 from core.logger import logger
+from core.error_utils import safe_error_detail
 router = APIRouter(prefix="/kb", tags=["abs-kb"])
 
 # Whitelist + size cap — kept in lockstep with ``routers/docs_router.py``
@@ -325,7 +326,7 @@ async def upload_build_studio_doc(
             results.append({
                 "success":  False,
                 "filename": original_filename,
-                "error":    f"Could not extract text from file: {parse_err}",
+                "error":    f"Could not extract text from file: {safe_error_detail(parse_err)}",
             })
             continue
 
